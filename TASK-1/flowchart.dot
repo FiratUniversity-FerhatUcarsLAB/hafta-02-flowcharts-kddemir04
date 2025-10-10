@@ -1,0 +1,92 @@
+digraph ATM_ParaCekme {
+    rankdir=TB;
+    node [shape=box, style=rounded, fontname="Arial"];
+
+    start [label="BAŞLA", shape=oval];
+    kartKontrol [label="Kart takılı mı?", shape=diamond];
+    kartYok [label="YAZ: Lütfen kartınızı takınız.\nSON", shape=parallelogram];
+    pinGir [label="YAZ: Kart okundu.\nPIN giriniz", shape=parallelogram];
+    pinDeneme [label="denemeSayisi = 0\npinBasarili = YANLIŞ", shape=box];
+    pinKontrol [label="PIN doğru mu?", shape=diamond];
+    pinDogru [label="YAZ: PIN doğrulandı", shape=parallelogram];
+    pinYanlis [label="denemeSayisi = denemeSayisi + 1\nKalan = 3 - denemeSayisi", shape=box];
+    pinKalan [label="YAZ: Yanlış PIN.\nKalan hak: " , shape=parallelogram];
+    pinBloke [label="YAZ: 3 deneme bitti.\nKart bloke edildi.\nSON", shape=parallelogram];
+
+    anaMenu [label="YAZ: Ana Menü:\n1-Bakiye\n2-Para Çekme\n3-Çıkış", shape=parallelogram];
+    secimKontrol [label="Seçim?", shape=diamond];
+    bakiye [label="YAZ: Mevcut bakiye ve günlük çekim bilgisi", shape=parallelogram];
+    paraCekme [label="YAZ: Tutar gir (20 TL katı)", shape=parallelogram];
+    tutarGir [label="OKU tutar", shape=parallelogram];
+    tutarKontrol [label="Tutar sayısal mı?", shape=diamond];
+    tutarGecersiz [label="YAZ: Geçersiz tutar", shape=parallelogram];
+    tutarPozitif [label="Tutar > 0?", shape=diamond];
+    tutarKati [label="Tutar 20 TL katı mı?", shape=diamond];
+    bakiyeKontrol [label="Tutar <= bakiye?", shape=diamond];
+    limitKontrol [label="(gunlukCekilen + tutar) <= gunlukLimit?", shape=diamond];
+    onay [label="YAZ: Onaylıyor musunuz? (evet/hayır)", shape=parallelogram];
+    onayKontrol [label="Onay = evet?", shape=diamond];
+    paraVer [label="YAZ: Nakit veriliyor.\nBakiye ve günlük çekilen güncelleniyor", shape=box];
+    fis [label="YAZ: Fiş ister misiniz? (evet/hayır)", shape=parallelogram];
+    fisKontrol [label="Fiş = evet?", shape=diamond];
+    fisBas [label="YAZ: Fiş basılıyor", shape=parallelogram];
+    fisVerme [label="YAZ: Fiş verilmedi", shape=parallelogram];
+    islembitti [label="YAZ: İşlem başarılı\nAna menüye dön", shape=parallelogram];
+    cikis [label="YAZ: Kart iade\nHoşçakalın", shape=parallelogram];
+    tekrar [label="Yeni işlem yapmak ister misiniz?", shape=parallelogram];
+    tekrarKontrol [label="tekrar = evet?", shape=diamond];
+    bitir [label="BİTİR", shape=oval];
+
+    # Akış bağlantıları
+    start -> kartKontrol;
+    kartKontrol -> kartYok [label="HAYIR"];
+    kartKontrol -> pinGir [label="EVET"];
+    pinGir -> pinDeneme;
+    pinDeneme -> pinKontrol;
+
+    pinKontrol -> pinDogru [label="EVET"];
+    pinKontrol -> pinYanlis [label="HAYIR"];
+    pinYanlis -> pinBloke [label="denemeSayisi=3"];
+    pinYanlis -> pinKalan [label="deneme < 3"];
+    pinKalan -> pinKontrol;
+    pinDogru -> anaMenu;
+
+    anaMenu -> secimKontrol;
+    secimKontrol -> bakiye [label="1"];
+    secimKontrol -> paraCekme [label="2"];
+    secimKontrol -> cikis [label="3"];
+    bakiye -> tekrar;
+
+    paraCekme -> tutarGir;
+    tutarGir -> tutarKontrol;
+    tutarKontrol -> tutarGecersiz [label="HAYIR"];
+    tutarKontrol -> tutarPozitif [label="EVET"];
+    tutarGecersiz -> tekrar;
+
+    tutarPozitif -> tutarKati [label="EVET"];
+    tutarPozitif -> tekrar [label="HAYIR"];
+    tutarKati -> bakiyeKontrol [label="EVET"];
+    tutarKati -> tekrar [label="HAYIR"];
+    bakiyeKontrol -> limitKontrol [label="EVET"];
+    bakiyeKontrol -> tekrar [label="HAYIR"];
+    limitKontrol -> onay [label="EVET"];
+    limitKontrol -> tekrar [label="HAYIR"];
+    onay -> onayKontrol;
+    onayKontrol -> paraVer [label="EVET"];
+    onayKontrol -> tekrar [label="HAYIR"];
+    paraVer -> fis;
+    fis -> fisKontrol;
+    fisKontrol -> fisBas [label="EVET"];
+    fisKontrol -> fisVerme [label="HAYIR"];
+    fisBas -> islembitti;
+    fisVerme -> islembitti;
+    islembitti -> tekrar;
+
+    tekrar -> tekrarKontrol;
+    tekrarKontrol -> anaMenu [label="EVET"];
+    tekrarKontrol -> cikis [label="HAYIR"];
+    cikis -> bitir;
+
+    kartYok -> bitir;
+    pinBloke -> bitir;
+}
