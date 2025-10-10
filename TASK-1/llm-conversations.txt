@@ -1,0 +1,358 @@
+ATM para ¸cekme sistemi i¸cin detaylı pseudocode yazmanı istiyorum. S¸unları i¸cermeli: PIN do˘grulama (3 hak), bakiye kontrol¨u, tutar kontrol¨u (20 TL katları), g¨unl¨uk limit kontrol¨u, i¸slem tekrarı se¸cene˘gi. T¨um adımları BAS¸LA, OKU, YAZ, E˘ GER-˙ ISE, D¨ ONG¨ U yapılarıyla yaz.
+ChatGPT:
+
+Aşağıda istediğin kurallar (BAŞLA, OKU, YAZ, EĞER-İSE, DÖNGÜ) kullanılarak yazılmış ayrıntılı bir ATM para çekme pseudocode'u var. PIN doğrulama (3 hak), bakiye kontrolü, tutar kontrolü (20 TL katları), günlük limit kontrolü ve işlem tekrar seçeneği hepsi dahil. İstersen bu pseudocode'u doğrudan Java/C# vb. bir dile çevirmene de yardımcı olurum.
+
+BAŞLA
+
+    # Başlangıç değişkenleri
+    TANIMLA kartTakildi = DOĞRU
+    TANIMLA hesapBakiyesi = 3500.00        # örnek bakiye (TL)
+    TANIMLA gunlukLimit = 1000.00         # günlük çekilebilecek toplam limit (TL)
+    TANIMLA gunlukCekilen = 0.00          # o gün içinde çekilen miktar (TL)
+    TANIMLA PIN_DOGRU = "1234"            # gerçek sistemde bu banka sunucusunda olur
+    TANIMLA PIN_DENEME_SINIRI = 3
+
+    # Kart takılı ise devam et, değilse işlemi sonlandır
+    EĞER-İSE kartTakildi = HATALI
+        YAZ "Lütfen kartınızı takınız."
+        SON
+    GERİSE
+        YAZ "Kart okundu. Lütfen PIN giriniz."
+
+    # PIN doğrulama - 3 hak
+    TANIMLA denemeSayisi = 0
+    TANIMLA pinBasarili = YANLIŞ
+
+    DÖNGÜ (denemeSayisi < PIN_DENEME_SINIRI) YAP
+        YAZ "PIN kodunu giriniz veya 'iptal' yazınız:"
+        OKU girilenPIN
+
+        EĞER-İSE girilenPIN = "iptal"
+            YAZ "İşlem iptal edildi. Kart iade ediliyor."
+            kartTakildi = HATALI
+            SON
+
+        EĞER-İSE girilenPIN = PIN_DOGRU
+            pinBasarili = DOĞRU
+            YAZ "PIN doğrulandı."
+            DUR
+        GERİSE
+            denemeSayisi = denemeSayisi + 1
+            KALAN = PIN_DENEME_SINIRI - denemeSayisi
+            EĞER-İSE KALAN > 0
+                YAZ "Yanlış PIN. Kalan deneme hakkı: " + KALAN
+            GERİSE
+                YAZ "PIN denemeleri tükendi. Kart bloke edildi ve iade ediliyor."
+                kartTakildi = HATALI
+                SON
+            GERİSE
+        SON
+    SON_DÖNGÜ
+
+    EĞER-İSE pinBasarili = YANLIŞ
+        YAZ "PIN doğrulanamadı. İşlem sonlandırılıyor."
+        SON
+    GERİSE
+        # Ana işlem menüsüne geç
+
+    DÖNGÜ (TRUE) YAP   # Kullanıcı işlem tekrarı için ana döngü
+        YAZ ""
+        YAZ "Lütfen yapmak istediğiniz işlemi seçiniz:"
+        YAZ "1 - Bakiye Sorgulama"
+        YAZ "2 - Para Çekme"
+        YAZ "3 - Çıkış"
+        OKU secim
+
+        EĞER-İSE secim = "1"    # Bakiye sorgulama
+            YAZ "Mevcut bakiyeniz: " + hesapBakiyesi + " TL"
+            YAZ "Bugün çektiğiniz toplam: " + gunlukCekilen + " TL (Günlük limit: " + gunlukLimit + " TL)"
+        GERİSE EĞER-İSE secim = "2"    # Para çekme
+            # Miktar okuma ve kontroller
+            YAZ "Çekmek istediğiniz tutarı giriniz (20 TL katları). İptal için 'iptal' yazın:"
+            OKU tutarGirdi
+
+            EĞER-İSE tutarGirdi = "iptal"
+                YAZ "İşlem iptal edildi. Ana menüye dönülüyor."
+                DEVAM_ET
+            GERİSE
+                # Girilen değerin sayısal olup olmadığını kontrol et (basit doğrulama)
+                EĞER-İSE TutarGirisiNumerikMi(tutarGirdi) = YANLIŞ
+                    YAZ "Geçersiz tutar. Lütfen sayısal bir değer giriniz."
+                    DEVAM_ET
+                GERİSE
+                    TANIMLA tutar = SAYIYA_DONUSTUR(tutarGirdi)
+
+                    # Tutarın pozitif olup olmadığı kontrolü
+                    EĞER-İSE tutar <= 0
+                        YAZ "Çekilecek tutar pozitif olmalıdır."
+                        DEVAM_ET
+                    GERİSE
+                        # 20 TL katı kontrolü
+                        EĞER-İSE (tutar % 20) != 0
+                            YAZ "Tutar 20 TL'nin katı olmalıdır. Lütfen 20, 40, 60 ... gibi bir tutar giriniz."
+                            DEVAM_ET
+                        GERİSE
+                            # Bakiye kontrolü
+                            EĞER-İSE tutar > hesapBakiyesi
+                                YAZ "Yetersiz bakiye. Mevcut bakiye: " + hesapBakiyesi + " TL"
+                                DEVAM_ET
+                            GERİSE
+                                # Günlük limit kontrolü
+                                EĞER-İSE (gunlukCekilen + tutar) > gunlukLimit
+                                    TANIMLA kalanLimit = gunlukLimit - gunlukCekilen
+                                    EĞER-İSE kalanLimit <= 0
+                                        YAZ "Günlük limitiniz dolmuştur. Başka işlem yapamazsınız."
+                                        DEVAM_ET
+                                    GERİSE
+                                        YAZ "Bu işlem günlük limitinizi aşar. Kalan günlük çekilebilir miktar: " + kalanLimit + " TL"
+                                        DEVAM_ET
+                                    SON
+                                GERİSE
+                                    # Tüm kontroller geçti - işlem onayı
+                                    YAZ "Lütfen işlemi onaylayınız: 'evet' veya 'hayır'"
+                                    OKU onay
+                                    EĞER-İSE onay = "evet"
+                                        # Para verme ve güncelleme
+                                        YAZ "Lütfen nakitinizi alınız. " + tutar + " TL verildi."
+                                        hesapBakiyesi = hesapBakiyesi - tutar
+                                        gunlukCekilen = gunlukCekilen + tutar
+                                        YAZ "İşlem başarılı. Kalan bakiye: " + hesapBakiyesi + " TL"
+                                        YAZ "Bugün çekilen toplam: " + gunlukCekilen + " TL"
+                                        # Fis ister mi?
+                                        YAZ "Fiş ister misiniz? (evet/hayır)"
+                                        OKU fisSecim
+                                        EĞER-İSE fisSecim = "evet"
+                                            YAZ "Fiş basılıyor..."
+                                        GERİSE
+                                            YAZ "Fiş verilmedi."
+                                        SON
+                                    GERİSE
+                                        YAZ "İşlem iptal edildi. Ana menüye dönülüyor."
+                                    SON
+                                SON
+                            SON
+                        SON
+                    SON
+                SON
+        GERİSE EĞER-İSE secim = "3"
+            YAZ "Çıkış seçildi. Kart iade ediliyor. Hoşçakalın."
+            kartTakildi = HATALI
+            SON
+        GERİSE
+            YAZ "Geçersiz seçim. Lütfen 1, 2 veya 3 giriniz."
+        SON
+
+        # İşlem tekrarı sorusu (ana döngü devam/bitir)
+        YAZ "Yeni bir işlem yapmak ister misiniz? (evet/hayır)"
+        OKU tekrar
+        EĞER-İSE tekrar = "evet"
+            YAZ "Ana menüye dönülüyor..."
+            DEVAM_ET   # döngü devam eder
+        GERİSE
+            YAZ "İşlem sonlandırılıyor. Kart iade ediliyor. Güle güle."
+            kartTakildi = HATALI
+            SON
+        SON
+    SON_DÖNGÜ
+
+SON  # program sonu
+
+
+# Yardımcı fonksiyon (kullanım amaçlı, dil bağımsız)
+FONKSİYON TutarGirisiNumerikMi(girdi)
+    DENEME: sayi = SAYIYA_DONUSTUR(girdi)  # hata olursa FALSE döndür
+    EĞER-İSE dönüştürme başarılıysa
+        DÖN TRUE
+    GERİSE
+        DÖN FALSE
+    SON
+SONFONKSİYON
+
+
+Açıklamalar / notlar:
+
+DEVAM_ET ana döngü içinde "diğer adımlara geç" anlamında kullanıldı (döngünün başına dön).
+
+SON programı/işlemi tamamen sonlandırır; gerçek uygulamada kart iade, oturum kapatma gibi işlemler yapılır.
+
+TutarGirisiNumerikMi gibi bir yardımcı kontrol, geçersiz girişleri yakalamak için kullanışlıdır.
+
+gunlukLimit ve gunlukCekilen hesabı gerçek sistemde kullanıcıya/hesaba göre banka veritabanından yönetilir (kalıcı).
+
+ATM'de ek kontroller (ağ bağlantısı, kasa nakit miktarı, güvenlik olayları) de gerçek dünyada gereklidir; istersen onları da ekleyebilirim.
+
+İstersen bunu:
+
+Java/C# koduna dönüştüreyim,
+
+ya da menü/mesaj metinlerini Türkçe/İngilizce olarak temizleyeyim,
+
+veya günlük limiti tarih bazlı (gün değişiminde sıfırlama) mantığıyla detaylandırayım.
+
+Hangi adımı ilerletmek istersin?
+
+Şunu dedin:
+Bu pseudocode’u Graphviz DOT diline ¸cevir. Ba¸sla/Bitir i¸cin oval, girdi/¸cıktı i¸cin parallelogram, i¸slem i¸cin box, karar i¸cin diamond kullan. T¨um okları ve etiketleri ekle.
+ChatGPT:
+
+Harika — şimdi o kapsamlı ATM pseudocode’unu isteğin doğrultusunda Graphviz DOT biçimine çevireceğim.
+Bu diyagramda:
+
+Oval → Başla / Bitir
+
+Parallelogram → Girdi / Çıktı (OKU / YAZ)
+
+Box → İşlem adımları
+
+Diamond → Karar (EĞER–İSE)
+
+Tüm yön okları ve etiketleri yerinde olacak.
+
+Aşağıda tam Graphviz DOT kodunu görebilirsin 👇
+Bu kodu .dot uzantılı bir dosyaya kaydedip Graphviz
+ gibi çevrimiçi araçlarda açabilirsin.
+
+digraph ATM_ParaCekme {
+    rankdir=TB;
+    node [shape=box, style=rounded, fontname="Arial"];
+
+    start [label="BAŞLA", shape=oval];
+    kartKontrol [label="Kart takılı mı?", shape=diamond];
+    kartYok [label="YAZ: Lütfen kartınızı takınız.\nSON", shape=parallelogram];
+    pinGir [label="YAZ: Kart okundu.\nPIN giriniz", shape=parallelogram];
+    pinDeneme [label="denemeSayisi = 0\npinBasarili = YANLIŞ", shape=box];
+    pinKontrol [label="PIN doğru mu?", shape=diamond];
+    pinDogru [label="YAZ: PIN doğrulandı", shape=parallelogram];
+    pinYanlis [label="denemeSayisi = denemeSayisi + 1\nKalan = 3 - denemeSayisi", shape=box];
+    pinKalan [label="YAZ: Yanlış PIN.\nKalan hak: " , shape=parallelogram];
+    pinBloke [label="YAZ: 3 deneme bitti.\nKart bloke edildi.\nSON", shape=parallelogram];
+
+    anaMenu [label="YAZ: Ana Menü:\n1-Bakiye\n2-Para Çekme\n3-Çıkış", shape=parallelogram];
+    secimKontrol [label="Seçim?", shape=diamond];
+    bakiye [label="YAZ: Mevcut bakiye ve günlük çekim bilgisi", shape=parallelogram];
+    paraCekme [label="YAZ: Tutar gir (20 TL katı)", shape=parallelogram];
+    tutarGir [label="OKU tutar", shape=parallelogram];
+    tutarKontrol [label="Tutar sayısal mı?", shape=diamond];
+    tutarGecersiz [label="YAZ: Geçersiz tutar", shape=parallelogram];
+    tutarPozitif [label="Tutar > 0?", shape=diamond];
+    tutarKati [label="Tutar 20 TL katı mı?", shape=diamond];
+    bakiyeKontrol [label="Tutar <= bakiye?", shape=diamond];
+    limitKontrol [label="(gunlukCekilen + tutar) <= gunlukLimit?", shape=diamond];
+    onay [label="YAZ: Onaylıyor musunuz? (evet/hayır)", shape=parallelogram];
+    onayKontrol [label="Onay = evet?", shape=diamond];
+    paraVer [label="YAZ: Nakit veriliyor.\nBakiye ve günlük çekilen güncelleniyor", shape=box];
+    fis [label="YAZ: Fiş ister misiniz? (evet/hayır)", shape=parallelogram];
+    fisKontrol [label="Fiş = evet?", shape=diamond];
+    fisBas [label="YAZ: Fiş basılıyor", shape=parallelogram];
+    fisVerme [label="YAZ: Fiş verilmedi", shape=parallelogram];
+    islembitti [label="YAZ: İşlem başarılı\nAna menüye dön", shape=parallelogram];
+    cikis [label="YAZ: Kart iade\nHoşçakalın", shape=parallelogram];
+    tekrar [label="Yeni işlem yapmak ister misiniz?", shape=parallelogram];
+    tekrarKontrol [label="tekrar = evet?", shape=diamond];
+    bitir [label="BİTİR", shape=oval];
+
+    # Akış bağlantıları
+    start -> kartKontrol;
+    kartKontrol -> kartYok [label="HAYIR"];
+    kartKontrol -> pinGir [label="EVET"];
+    pinGir -> pinDeneme;
+    pinDeneme -> pinKontrol;
+
+    pinKontrol -> pinDogru [label="EVET"];
+    pinKontrol -> pinYanlis [label="HAYIR"];
+    pinYanlis -> pinBloke [label="denemeSayisi=3"];
+    pinYanlis -> pinKalan [label="deneme < 3"];
+    pinKalan -> pinKontrol;
+    pinDogru -> anaMenu;
+
+    anaMenu -> secimKontrol;
+    secimKontrol -> bakiye [label="1"];
+    secimKontrol -> paraCekme [label="2"];
+    secimKontrol -> cikis [label="3"];
+    bakiye -> tekrar;
+
+    paraCekme -> tutarGir;
+    tutarGir -> tutarKontrol;
+    tutarKontrol -> tutarGecersiz [label="HAYIR"];
+    tutarKontrol -> tutarPozitif [label="EVET"];
+    tutarGecersiz -> tekrar;
+
+    tutarPozitif -> tutarKati [label="EVET"];
+    tutarPozitif -> tekrar [label="HAYIR"];
+    tutarKati -> bakiyeKontrol [label="EVET"];
+    tutarKati -> tekrar [label="HAYIR"];
+    bakiyeKontrol -> limitKontrol [label="EVET"];
+    bakiyeKontrol -> tekrar [label="HAYIR"];
+    limitKontrol -> onay [label="EVET"];
+    limitKontrol -> tekrar [label="HAYIR"];
+    onay -> onayKontrol;
+    onayKontrol -> paraVer [label="EVET"];
+    onayKontrol -> tekrar [label="HAYIR"];
+    paraVer -> fis;
+    fis -> fisKontrol;
+    fisKontrol -> fisBas [label="EVET"];
+    fisKontrol -> fisVerme [label="HAYIR"];
+    fisBas -> islembitti;
+    fisVerme -> islembitti;
+    islembitti -> tekrar;
+
+    tekrar -> tekrarKontrol;
+    tekrarKontrol -> anaMenu [label="EVET"];
+    tekrarKontrol -> cikis [label="HAYIR"];
+    cikis -> bitir;
+
+    kartYok -> bitir;
+    pinBloke -> bitir;
+}
+
+
+Bu diyagram:
+
+Tüm kararları EVET/HAYIR etiketleriyle açıkça gösterir.
+
+Her işlem türü (başla, giriş, işlem, karar) farklı şekil ile tanımlanmıştır.
+
+İstersen renk, altgruplama (subgraph cluster) veya işlem tekrarları için döngü okları da ekleyebilirim.
+
+İstersen bu diyagramın renkli, daha okunabilir (örneğin alt menüler için kutucuklu) veya sadeleştirilmiş bir sürümünü oluşturayım — hangisini istersin?
+
+Şunu dedin:
+git hubda readme kısmı içinde bir kısa açıklama yapar mısın
+ChatGPT:
+
+Elbette! İşte bu ATM para çekme sistemini GitHub’daki README.md dosyanda üst kısma koyabileceğin kısa ve etkileyici bir açıklama örneği 👇
+
+# 🏧 ATM Para Çekme Sistemi (Pseudocode + Flowchart)
+
+Bu proje, temel ATM işlemlerini simüle eden bir **pseudocode ve akış diyagramı (Graphviz DOT)** örneğidir.  
+Sistem aşağıdaki özellikleri içerir:
+
+- 🔐 **PIN Doğrulama (3 hak)**
+- 💰 **Bakiye kontrolü**
+- 💸 **20 TL katlarıyla para çekme**
+- 📊 **Günlük limit kontrolü**
+- 🔁 **İşlem tekrarı seçeneği**
+
+Proje; algoritma mantığını öğretmek, akış diyagramı oluşturma pratiği yapmak ve koşullu yapıları görselleştirmek amacıyla hazırlanmıştır.
+
+---
+
+📂 **Dosyalar:**
+- `atm_pseudocode.txt` → Detaylı algoritma yapısı  
+- `atm_flowchart.dot` → Graphviz DOT dosyası (akış diyagramı)
+
+🧩 **Çalıştırmak için:**
+Graphviz Online: [https://dreampuf.github.io/GraphvizOnline/](https://dreampuf.github.io/GraphvizOnline/)  
+DOT dosyasını bu siteye yapıştırarak diyagramı görselleştirebilirsin.
+
+
+İstersen bu açıklamayı İngilizce hale getireyim ya da README’nin devamına “Kurulum”, “Kullanım”, “Katkı” gibi bölümler de ekleyebilirim. Hangisini istersin?
+
+Şunu dedin:
+Hayır teşekkür ederim
+ChatGPT:
+
+Rica ederim 😊
+Ne zaman istersen yine yardımcı olurum.
+GitHub projen gayet güzel bir yapıya kavuşmuş olacak — eline sağlık! 🚀
