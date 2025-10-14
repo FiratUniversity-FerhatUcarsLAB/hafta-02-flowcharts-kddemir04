@@ -1,0 +1,670 @@
+“E-ticaret sitesinde sepet y¨onetimi ve ¨odeme sistemini adım adım a¸cıkla. Kullanıcı giri¸si, ¨ur¨un ekleme, stok kontrol¨u, indirim kodu, kargo hesaplama ve ¨odeme a¸samalarını i¸cermeli
+ChatGPT:
+Sepet Yönetimi ve Ödeme Sistemi — Adım Adım (Türkçe)
+
+Aşağıda e-ticaret sitesinde kullanıcı girişi, ürün ekleme, stok kontrolü, indirim kodu, kargo hesaplama ve ödeme aşamaları için uçtan uca bir rehber var. Hem iş akışı (business logic), hem veri modeli, hem API/endpoint önerileri hem de önemli güvenlik/kenar durumlarını içerir. İstersen bu planı doğrudan projenize uygulayacak şekilde kod örneklerine veya bir ER diyagramına da çevirebilirim — şimdi tamamını veriyorum.
+
+1) Yüksek seviyeli akış (özet)
+
+Kullanıcı kayıt / giriş (session veya JWT)
+
+Kullanıcı ürünleri listeler ve “sepete ekle” yapar
+
+Sunucu/DB stok kontrolü yapar; ilgili miktarı rezerve edebilir veya doğrudan düşer (stratejiya göre)
+
+Sepet üzerinde miktar güncelleme, ürün çıkarma, kupon girme
+
+Kargo adresi girilir → kargo seçenekleri & ücret hesaplanır
+
+Sipariş özeti (ürünler, ara toplam, indirim, kargo, vergi) gösterilir
+
+Ödeme (3rd-party gateway) → callback/webhook ile ödeme doğrulanır
+
+Ödeme onaylandı → sipariş onaylanır, stok kalıcı olarak düşürülür, e-posta / SMS gönderilir
+
+2) Veri modeli (örnek tablolar / entity'ler)
+
+Basit bir SQL tabanlı model:
+
+users: id, email, password_hash, name, phone, created_at, updated_at
+
+products: id, sku, title, description, price_cents, stock, weight_kg, dimensions, created_at
+
+product_variants (opsiyonel): id, product_id, name (Renk/Beden), sku, stock, price_cents
+
+carts: id, user_id nullable (anon sepetler için), session_id, created_at, updated_at
+
+cart_items: id, cart_id, product_id, variant_id nullable, quantity, price_snapshot_cents, created_at
+
+coupons: id, code, type (percent|fixed), value_cents_or_percent, active_from, expires_at, usage_limit, single_use_per_user boolean, min_order_cents, created_at
+
+orders: id, user_id, status (pending/paid/failed/shipped/cancelled), total_cents, currency, shipping_address json, billing_address json, created_at
+
+order_items: id, order_id, product_id, variant_id, quantity, unit_price_snapshot_cents
+
+payments: id, order_id, gateway, gateway_payment_id, status, amount_cents, processed_at
+
+shipments: id, order_id, carrier, service, price_cents, tracking_number
+
+Not: tutarlılık için fiyatları "cents" (tam sayı) tut.
+
+3) Kullanıcı girişi & oturum yönetimi
+
+Kayıt: email doğrulama + güvenli şifreleme (bcrypt/scrypt/argon2).
+
+Giriş: JWT veya sunucu tarafı oturum çerezi (HttpOnly, Secure).
+
+Oturum süreleri: ödeme sırasında güvenlik nedeniyle kısa token ömrü + refresh token stratejisi.
+
+Çok faktörlü doğrulama (MFA) opsiyonel ama ödeme/sentetik risk yüksekse önerilir.
+
+Guest (misafir) sepeti: session_id ile 30 gün sakla, kayıt olunca user_id ile bağla.
+
+4) Sepet (Cart) yönetimi — Detaylı adımlar
+4.1 API uç noktaları (örnek REST)
+
+POST /api/cart — yeni sepet (anon) veya kayıtlı kullanıcı için oluştur.
+
+GET /api/cart/{cartId} — sepeti getir.
+
+POST /api/cart/{cartId}/items — ürün ekle { product_id, variant_id?, quantity }.
+
+PUT /api/cart/{cartId}/items/{itemId} — miktar güncelle.
+
+DELETE /api/cart/{cartId}/items/{itemId} — ürünü çıkar.
+
+POST /api/cart/{cartId}/apply-coupon — kupon uygula { code }.
+
+POST /api/cart/{cartId}/estimate-shipping — kargo tahmini { address }.
+
+4.2 "Ürün ekle" işlemi (sıralı kontrol)
+
+İstek: kullanıcı product_id ve quantity gönderir.
+
+Sunucu ürünü ve varsa variant'ı yükler (SELECT FOR UPDATE veya optimistic locking).
+
+Stok kontrol: if stock >= requested -> geçerli; aksi halde kullanıcıya klasifikasyon (kalan miktar ya da stokta yok).
+
+Sepet öğesi eklenir/aktualize edilir: eğer aynı ürün zaten varsa miktar artırılır (max per-order limiti ile).
+
+Fiyat snapshot: price_snapshot_cents = current_product_price_cents kaydet (ürün fiyatı değişse sepet korunur).
+
+Opsiyonel: kısa süreli "stok rezerve" — eğer rezerve ediyorsan TTL (örn 15 dk) uygula; işlem süresince rezerve tutulur.
+
+4.3 Stok tutma stratejileri
+
+A. Rezerve etme (reserve on add): Avantaj — ödemenin çökmesi riski düşük; Dezavantaj — sepeti tutan kullanıcılarda stok bağlanır (stale rezervler yönetilmeli).
+
+B. Rezerve etme sadece ödeme başlangıcında (reserve on checkout): daha az blokaj, ancak ödeme sırasında stok tükenme riski artar.
+
+C. Atomic decrement on order paid: Stok sadece ödeme başarılı olduğunda düşürülür — basit ama oversell riski ödeme çözümüne göre yüksek olabilir.
+Tavsiye: orta yol: ödeme başladığında rezerve et (15–30 dk) ve ödeme başarılıysa kalıcı düş; başarısızsa rezerveyi temizle.
+
+5) İndirim kodu / kupon yönetimi
+5.1 Kupon türleri
+
+Yüzdelik indirim (%10 vb.)
+
+Sabit tutar indirim (₺50 off)
+
+Ücretsiz kargo
+
+Ürün bazlı (belirli SKU'larda geçerli)
+
+İlk siparişe özel, kullanıcı başına tek kullanım vb.
+
+5.2 Uygulama mantığı
+
+Kullanıcı kodu girer → POST /api/cart/{id}/apply-coupon.
+
+Sunucu kodu doğrular: aktif mi, tarih aralığı, kullanım limiti, min_order tutarı, ürüne/katmana uygunluk.
+
+Hesaplama: kupondan düşülecek net değer hesaplanır ve order summary'e eklenir.
+
+Kupon kullanımı geçici işaretlenebilir (reserve usage) — sipariş tamamlandığında kullanım sayısını arttır.
+
+Kupon idempotency: aynı kod iki kez uygulanmasın.
+
+6) Kargo hesaplama
+6.1 Girdi
+
+Gönderim adresi (ülke, şehir, posta kodu)
+
+Ürün toplam ağırlık / hacim (kg / volumetric weight)
+
+İstenen hız (standard/express)
+
+Satıcının depo/fulfillment lokasyonu
+
+6.2 Hesaplama yöntemleri
+
+Carrier API entegrasyonu (örn: Yurtiçi Kargo API, Sürat, UPS, DHL) — en doğru yöntem. Sunucu adres/parcel bilgisi ile gerçek fiyat ister.
+
+Basit tarifeyle hesap: sabit oran + kg başına ücret + bölge multiplier.
+
+Ücretsiz kargo eşiği: eğer subtotal >= X → ücretsiz.
+
+6.3 Endpoint
+
+POST /api/cart/{id}/estimate-shipping → döndür: [ { carrier, service, price_cents, estimated_days } ]
+
+POST /api/orders/{id}/select-shipping → kullanıcı seçer → shipment kaydı oluşturulur.
+
+7) Sipariş özeti & doğrulama (checkout)
+
+Oluşan sipariş özeti: ürünler (qty, fiyat), ara toplam, kupon, kargo, vergi (%KDV), toplam.
+
+Validasyonlar: stok yeniden kontrolü, kupon geçerliliği, tutar hesap doğruluğu, kullanıcı adres doğrulama.
+
+Idempotency: checkout / create-order isteği idempotent olmalı (istek bir idempotency_key ile gönderilsin).
+
+Sipariş kaydı status = pending ile oluşturulur; ödeme tamamlanınca paid.
+
+8) Ödeme entegrasyonu (gateway flow)
+8.1 Popüler gateway mantığı (örnek adımlar)
+
+Kullanıcı ödeme sayfasında kart bilgilerini girer / 3D Secure başlatılır.
+
+Frontend, gateway ile tokenization yapar (PCI scope'u azaltmak için). Kart verileri sunucuya gitmez.
+
+Backend createPaymentIntent veya eşdeğeri ile gateway'e sipariş bilgisi gönderir (tutar, currency, order_id, return_url, metadata).
+
+Gateway ödeme işlemini başlatır; 3D Secure gerekiyorsa kullanıcı yönlendirilir (redirect) veya iframe/modal kullanılır.
+
+Ödeme sonucu gateway tarafından webhook ile backend'e bildirilir (aynı zamanda frontend de redirect ile gelir).
+
+Backend webhook'u doğrular (signature) → ödeme başarılıysa payments tablosuna kaydeder ve orders.status = paid yapar; stok düşürülür; confirmation gönderilir.
+
+8.2 Önemli noktalar
+
+Webhook security: gateway secret ile signature kontrolü.
+
+Idempotency: Webhook birden fazla gönderilebilir; payment record'ları gateway_payment_id ile eşsiz tutulmalı.
+
+3D Secure: bazen ödeme 3D secure gerektirir — frontend bu flow'u desteklemeli.
+
+Hatalı/yarım kalan ödemeler: pending, failed durumlarıyla yönet; otomatik iptal TTL (örn 1 saat).
+
+Store card on file (müşteri izniyle) → PCI uyumluluğu & tokenization.
+
+9) Örnek ödeme sequence (kısa)
+
+Frontend POST /api/checkout → backend create order (pending) + create payment intent gateway'e.
+
+Gateway döndürür client_secret → frontend 3DS/checkout UI ile kullanıcıyı tamamlar.
+
+Gateway sonucu webhook ile payments ve orders güncellenir → stok düşürülür → e-mail.
+
+10) Örnek kod parçacıkları (pseudocode)
+Sepete ürün ekleme (Node.js/Express-like pseudocode)
+// POST /api/cart/:cartId/items
+async function addToCart(req, res) {
+  const { productId, variantId, quantity } = req.body;
+  const cartId = req.params.cartId;
+
+  await db.transaction(async trx => {
+    // 1) lock product row to avoid race
+    const product = await trx('product_variants')
+      .where({ id: variantId || productId })
+      .forUpdate()
+      .first();
+
+    if (!product || product.stock < quantity) {
+      throw new Error('Stok yetersiz. Kalan: ' + (product ? product.stock : 0));
+    }
+
+    // 2) add or update cart_item
+    const existing = await trx('cart_items')
+      .where({ cart_id: cartId, product_id: productId, variant_id: variantId })
+      .first();
+
+    if (existing) {
+      await trx('cart_items').where({ id: existing.id }).update({
+        quantity: existing.quantity + quantity,
+        price_snapshot_cents: product.price_cents
+      });
+    } else {
+      await trx('cart_items').insert({
+        cart_id: cartId,
+        product_id: productId,
+        variant_id: variantId,
+        quantity,
+        price_snapshot_cents: product.price_cents
+      });
+    }
+
+    // Optionally reserve stock:
+    await trx('product_variants').where({ id: product.id })
+      .update({ stock: product.stock - quantity });
+  });
+
+  res.json({ success: true });
+}
+
+Ödeme webhook (pseudocode)
+// POST /webhooks/payment
+function handleWebhook(req, res) {
+  if (!verifySignature(req)) return res.status(400).end();
+
+  const event = req.body;
+  if (event.type === 'payment.succeeded') {
+    const paymentId = event.data.id;
+    // Idempotent insert
+    const existing = db('payments').where({ gateway_payment_id: paymentId }).first();
+    if (!existing) {
+      db('payments').insert({ order_id: event.metadata.order_id, gateway_payment_id: paymentId, status: 'succeeded', amount_cents: event.amount });
+      db('orders').where({ id: event.metadata.order_id }).update({ status: 'paid' });
+      // Düş stok, oluştur shipment, notify user...
+    }
+  }
+  res.json({ received: true });
+}
+
+11) Güvenlik & uyumluluk (kritik)
+
+PCI DSS: Kart verilerini asla kendi sunucularınızda saklamayın. Tokenization kullanın.
+
+XSS/CSRF: Ödeme ve oturum endpoint'leri CSRF token/koruma gerektirir. Cookie'lerde SameSite ve HttpOnly.
+
+Rate limiting: özellikle apply-coupon, login, cart mutasyonlarında brute-force'ları engelle.
+
+Veri doğrulama: fiyat toplamları frontend'de gösterilenle backend'de hesaplananın eşleştiğine emin ol. Sunucu tek otorite olsun.
+
+Idempotency keys: checkout ve ödeme yaratma çağrılarında kullan.
+
+12) Kullanıcı deneyimi (UX) önerileri
+
+Sepet her sayfada erişilebilir küçük özet (sticky).
+
+Sepeti kaydet (save for later).
+
+Stok azaldığında uyarı göster.
+
+Kupon giriş alanı net, kupon uygulandığında hangi kalemlerden düşüldüğünü göster.
+
+Ödeme sayfasında toplam maliyeti (vergi+kargo dahil) kesin olarak göster.
+
+Başarısız ödemede açık neden (kart reddedildi, 3DS başarısız vb.) ve yönlendirme (başka kart, destek).
+
+13) Hata durumları & edge-case'ler
+
+Race condition: iki kullanıcı aynı anda son stoğu alabilir → row lock veya optimistic locking kullan.
+
+Webhook kaybı: webhook tekrar gönderilebilir; işlemler idempotent olmalı.
+
+Kupon concurrency: aynı anda kullanım limiti son kullanımda aşılabilir → kullanım sayısı DB transaction ile artıralım.
+
+Ödeme timeout: reserve edilmiş stok belirli süre sonra serbest bırakılmalı.
+
+Fiyat farkı: sepet fiyatı ile ödeme anındaki fiyat farklı ise (fiyat değişti) kullanıcıya onay sun.
+
+14) Test & monitoring
+
+Unit test: cart logic, kupon hesaplama, stok azalması.
+
+Integration test: gateway sandbox ile 3D Secure akışı.
+
+Load test: sepete aynı ürün ekleme, checkout spike testleri.
+
+Alerting: başarısız webhook sayısı, ödeme hata oranı, negatif stoklar.
+
+15) Ölçeklendirme önerileri
+
+Sepetleri Redis'te cacheleyip arka planda DB'ye persist et (kısa ömürlü).
+
+Stok kritik path için kısa süreli in-memory reservation veya distributed lock.
+
+İleri: CQRS — sipariş yazma işlemleri için ayrı queue (Kafka/RabbitMQ) ile asenkron işleme.
+
+16) Özet kontrol listesi (hızlı)
+
+ Güvenli kullanıcı kimlik doğrulama (hash + email doğrulama)
+
+ Sepet CRUD API'leri + idempotency key
+
+ Stok kontrol & rezerve stratejisi belirle
+
+ Kupon yönetimi (kurallar + kullanım limiti)
+
+ Kargo hesaplama (carrier API veya tarifeler)
+
+ Ödeme gateway (tokenization, webhook, 3DS)
+
+ Webhook güvenliği & idempotency
+
+ Testler + monitoring
+
+İstersen şimdi:
+
+Bu şemaya göre örnek veritabanı şeması (SQL) yazayım,
+
+Veya Node.js + Express + PostgreSQL için çalışan örnek kod iskeleti hazırlayayım,
+
+Ya da ödeme akışı için adım adım frontend + backend kod örneği (Stripe/iyzico/PayU örneği) vereyim.
+
+Hangi parçayı istersin — ben hemen o kısmı detaylandırıp örnek kod vereyim.
+
+Şunu dedin:
+Bu sistemi pseudocode olarak yaz. D¨ong¨uler i¸cin D¨ ONG¨ U, ko¸sullar i¸cin E˘ GER-˙ ISE kullan. Her adımı BAS¸LA ile ba¸slat, B˙ IT˙ IR ile bitir. T¨um kontrol noktalarını belirt.
+ChatGPT:
+
+Tamam ✅
+Aşağıda e-ticaret sitesinde sepet yönetimi ve ödeme sistemi için hazırlanmış tam adımlı PSEUDOCODE bulunuyor.
+İstediğin biçimde — “BAŞLA / BİTİR”, “EĞER – İSE – DEĞİLSE”, “DÖNGÜ” ifadeleriyle yazılmıştır.
+Her aşamada kontrol noktaları açıkça belirtilmiştir.
+
+🛒 E-TİCARET SEPET YÖNETİMİ ve ÖDEME SİSTEMİ — PSEUDOCODE
+BAŞLA
+    // 1. KULLANICI GİRİŞİ
+    EKRANA "Giriş yap veya kayıt ol" YAZ
+    KULLANICI_SEÇİMİ ← GİRİŞ_YAP veya KAYIT_OL seçimi al
+    
+    EĞER KULLANICI_SEÇİMİ = KAYIT_OL İSE
+        EKRANA "Email ve şifre giriniz" YAZ
+        EMAIL, SIFRE ← KULLANICIDAN AL
+        YENİ_KULLANICI_OLUŞTUR(EMAIL, SIFRE)
+        EKRANA "Kayıt başarılı" YAZ
+    DEĞİLSE EĞER KULLANICI_SEÇİMİ = GİRİŞ_YAP İSE
+        EKRANA "Email ve şifre giriniz" YAZ
+        EMAIL, SIFRE ← KULLANICIDAN AL
+        EĞER KULLANICI_DOĞRU(EMAIL, SIFRE) İSE
+            EKRANA "Giriş başarılı" YAZ
+        DEĞİLSE
+            EKRANA "Hatalı giriş" YAZ
+            BİTİR
+        SON
+    SON
+
+    // 2. ÜRÜN SEÇME VE SEPETE EKLEME
+    SEPET ← BOŞ
+    DÖNGÜ ÜRÜN_SEÇİMİ = KULLANICI "Ürün ID gir (0 çıkış)" DEYİNCEYE KADAR
+        EĞER ÜRÜN_SEÇİMİ = 0 İSE
+            DÖNGÜDEN ÇIK
+        DEĞİLSE
+            MİKTAR ← KULLANICIDAN "Kaç adet?" AL
+            EĞER STOK_KONTROL(ÜRÜN_SEÇİMİ) ≥ MİKTAR İSE
+                SEPETE_EKLE(SEPET, ÜRÜN_SEÇİMİ, MİKTAR)
+                EKRANA "Ürün sepete eklendi" YAZ
+            DEĞİLSE
+                EKRANA "Yetersiz stok!" YAZ
+            SON
+        SON
+    DÖNGÜ SONU
+
+    // 3. SEPET GÖRÜNTÜLEME VE GÜNCELLEME
+    EKRANA "Sepetiniz:" YAZ
+    SEPETİ_GÖSTER(SEPET)
+    
+    EKRANA "Sepeti düzenlemek ister misiniz? (E/H)" YAZ
+    CEVAP ← KULLANICIDAN AL
+    EĞER CEVAP = "E" İSE
+        DÖNGÜ GÜNCELLEME = KULLANICI "Ürün ID gir (0 çıkış)" DEYİNCEYE KADAR
+            EĞER GÜNCELLEME = 0 İSE
+                DÖNGÜDEN ÇIK
+            DEĞİLSE
+                YENİ_MİKTAR ← KULLANICIDAN "Yeni miktar?" AL
+                EĞER STOK_KONTROL(GÜNCELLEME) ≥ YENİ_MİKTAR İSE
+                    SEPET_GÜNCELLE(SEPET, GÜNCELLEME, YENİ_MİKTAR)
+                    EKRANA "Sepet güncellendi" YAZ
+                DEĞİLSE
+                    EKRANA "Stok yetersiz" YAZ
+                SON
+            SON
+        DÖNGÜ SONU
+    SON
+
+    // 4. İNDİRİM KODU UYGULAMA
+    EKRANA "İndirim kodunuz var mı? (E/H)" YAZ
+    CEVAP ← KULLANICIDAN AL
+    EĞER CEVAP = "E" İSE
+        KOD ← KULLANICIDAN "Kodu giriniz" AL
+        EĞER KUPON_GEÇERLİ(KOD) İSE
+            İNDİRİM_ORANI ← KUPON_DEĞERİ(KOD)
+            SEPET.TOPLAM ← SEPET.TOPLAM - (SEPET.TOPLAM * İNDİRİM_ORANI)
+            EKRANA "İndirim uygulandı" YAZ
+        DEĞİLSE
+            EKRANA "Geçersiz kod" YAZ
+        SON
+    SON
+
+    // 5. KARGO HESAPLAMA
+    EKRANA "Adresinizi giriniz:" YAZ
+    ADRES ← KULLANICIDAN AL
+    AĞIRLIK ← SEPET_AĞIRLIĞI_HESAPLA(SEPET)
+    KARGO_FİYATI ← KARGO_HESAPLA(ADRES, AĞIRLIK)
+    EKRANA "Kargo ücreti: " + KARGO_FİYATI YAZ
+
+    // 6. SİPARİŞ ÖZETİ
+    TOPLAM ← SEPET.TOPLAM + KARGO_FİYATI
+    EKRANA "Ara toplam: " + SEPET.TOPLAM YAZ
+    EKRANA "Kargo: " + KARGO_FİYATI YAZ
+    EKRANA "GENEL TOPLAM: " + TOPLAM YAZ
+
+    // 7. ÖDEME AŞAMASI
+    EKRANA "Ödeme yöntemini seçiniz: (1-Kredi Kartı, 2-Kapıda Ödeme)" YAZ
+    ÖDEME_TÜRÜ ← KULLANICIDAN AL
+
+    EĞER ÖDEME_TÜRÜ = 1 İSE
+        KART_BİLGİSİ ← KULLANICIDAN "Kart numarası, SKT, CVV" AL
+        EĞER ÖDEME_ONAY(KART_BİLGİSİ, TOPLAM) = BAŞARILI İSE
+            EKRANA "Ödeme başarılı!" YAZ
+            STOK_GÜNCELLE(SEPET)
+            SİPARİŞ_OLUŞTUR(SEPET, ADRES, TOPLAM, "ÖDENDİ")
+        DEĞİLSE
+            EKRANA "Ödeme başarısız, lütfen tekrar deneyin" YAZ
+            BİTİR
+        SON
+    DEĞİLSE EĞER ÖDEME_TÜRÜ = 2 İSE
+        EKRANA "Kapıda ödeme seçildi" YAZ
+        SİPARİŞ_OLUŞTUR(SEPET, ADRES, TOPLAM, "KAPIDA_ÖDEME")
+    SON
+
+    // 8. SİPARİŞ SONUCU
+    EKRANA "Siparişiniz oluşturuldu. Teşekkür ederiz!" YAZ
+BİTİR
+
+🔍 Açıklamalar (kontrol noktaları):
+Kontrol Noktası	Açıklama
+KULLANICI_DOĞRU()	Giriş bilgilerini kontrol eder.
+STOK_KONTROL()	Ürünün mevcut stok miktarını döndürür.
+SEPETE_EKLE()	Ürünü sepete ekler veya miktarını artırır.
+KUPON_GEÇERLİ()	Kupon kodunun geçerli olup olmadığını kontrol eder (tarih, kullanım limiti vb).
+KARGO_HESAPLA()	Adres ve ağırlığa göre kargo ücretini hesaplar.
+ÖDEME_ONAY()	Kart bilgilerinin doğruluğunu ve banka yanıtını kontrol eder.
+STOK_GÜNCELLE()	Satın alınan ürünlerin stoklarını azaltır.
+SİPARİŞ_OLUŞTUR()	Siparişi veritabanına kaydeder.
+
+İstersen bu pseudocode’u sana akış şeması (flowchart) ya da Graphviz DOT formatında diyagram olarak da hazırlayayım.
+Hangisini istersin — “flowchart” mı “dot kodu” mu?
+
+Şunu dedin:
+Pseudocode’u Graphviz DOT formatına ¸cevir. rankdir=TB kullan. Karar noktalarında EVET/HAYIR etiketlerini unutma
+ChatGPT:
+
+Harika 🎯
+Aşağıda verdiğin e-ticaret sepet yönetimi ve ödeme sistemi pseudocode’unun Graphviz DOT (rankdir=TB) biçimine çevrilmiş hâli var.
+Karar noktalarında EVET / HAYIR etiketleri eklendi, şekiller de türlerine göre ayrıldı:
+
+Oval (ellipse) → Başla / Bitir
+
+Parallelogram → Girdi / Çıktı (ekrana yaz / kullanıcıdan al)
+
+Box (rectangle) → İşlem
+
+Diamond → Karar (EĞER koşulları)
+
+digraph E_Ticaret {
+    rankdir=TB;
+    node [fontname="Arial"];
+
+    start [shape=ellipse, label="BAŞLA"];
+    login_choice [shape=parallelogram, label="Kullanıcı giriş yap veya kayıt ol?"];
+    
+    karar_kayit [shape=diamond, label="Kayıt ol seçildi mi?"];
+    yeni_kullanici [shape=box, label="Email ve şifre al\nYeni kullanıcı oluştur"];
+    giris [shape=box, label="Email ve şifre al\nGiriş bilgilerini doğrula"];
+    giris_dogru [shape=diamond, label="Giriş bilgileri doğru mu?"];
+    hatali_giris [shape=parallelogram, label="Hatalı giriş - sistem sonlanır"];
+    
+    urun_sec [shape=parallelogram, label="Ürün ID gir (0 çıkış)"];
+    urun_sifir [shape=diamond, label="Ürün ID = 0 mı?"];
+    miktar_al [shape=parallelogram, label="Kaç adet?"];
+    stok_kontrol [shape=diamond, label="Stok yeterli mi?"];
+    urun_ekle [shape=box, label="Ürünü sepete ekle"];
+    stok_yetersiz [shape=parallelogram, label="Yetersiz stok!"];
+    sepet_goster [shape=parallelogram, label="Sepeti göster"];
+    
+    sepet_duzenle_sor [shape=parallelogram, label="Sepeti düzenlemek ister misiniz? (E/H)"];
+    karar_duzenle [shape=diamond, label="Cevap = E mi?"];
+    guncelle_urun [shape=parallelogram, label="Ürün ID gir (0 çıkış)"];
+    guncelle_sifir [shape=diamond, label="Ürün ID = 0 mı?"];
+    yeni_miktar [shape=parallelogram, label="Yeni miktar gir"];
+    stok_guncelle_kontrol [shape=diamond, label="Stok yeterli mi?"];
+    sepet_guncelle [shape=box, label="Sepet güncelle"];
+    stok_yok2 [shape=parallelogram, label="Stok yetersiz"];
+    
+    indirim_sor [shape=parallelogram, label="İndirim kodu var mı? (E/H)"];
+    karar_indirim [shape=diamond, label="Cevap = E mi?"];
+    kod_al [shape=parallelogram, label="Kodu gir"];
+    kod_guncel [shape=diamond, label="Kupon geçerli mi?"];
+    kod_uygula [shape=box, label="İndirim uygula"];
+    kod_gecersiz [shape=parallelogram, label="Geçersiz kod"];
+    
+    adres_al [shape=parallelogram, label="Adres gir"];
+    kargo_hesap [shape=box, label="Kargo ücretini hesapla"];
+    toplam_hesap [shape=box, label="Genel toplamı hesapla"];
+    odeme_turu [shape=parallelogram, label="Ödeme türünü seç (1-Kart, 2-Kapıda)"];
+    karar_odeme [shape=diamond, label="Ödeme türü = Kart mı?"];
+    
+    kart_bilgi [shape=parallelogram, label="Kart bilgilerini gir"];
+    odeme_onay [shape=diamond, label="Ödeme onaylandı mı?"];
+    odeme_basarili [shape=box, label="Stok güncelle, sipariş oluştur (ÖDENDİ)"];
+    odeme_basarisiz [shape=parallelogram, label="Ödeme başarısız - bitir"];
+    
+    kapida [shape=box, label="Sipariş oluştur (KAPIDA ÖDEME)"];
+    siparis_son [shape=parallelogram, label="Sipariş oluşturuldu, teşekkürler!"];
+    end [shape=ellipse, label="BİTİR"];
+
+    // Bağlantılar
+    start -> login_choice -> karar_kayit;
+    karar_kayit -> yeni_kullanici [label="EVET"];
+    karar_kayit -> giris [label="HAYIR"];
+    yeni_kullanici -> urun_sec;
+    giris -> giris_dogru;
+    giris_dogru -> urun_sec [label="EVET"];
+    giris_dogru -> hatali_giris [label="HAYIR"];
+    hatali_giris -> end;
+
+    // Sepet ekleme döngüsü
+    urun_sec -> urun_sifir;
+    urun_sifir -> sepet_goster [label="EVET"];
+    urun_sifir -> miktar_al [label="HAYIR"];
+    miktar_al -> stok_kontrol;
+    stok_kontrol -> urun_ekle [label="EVET"];
+    stok_kontrol -> stok_yetersiz [label="HAYIR"];
+    urun_ekle -> urun_sec;
+    stok_yetersiz -> urun_sec;
+
+    // Sepet gösterme ve düzenleme
+    sepet_goster -> sepet_duzenle_sor;
+    sepet_duzenle_sor -> karar_duzenle;
+    karar_duzenle -> guncelle_urun [label="EVET"];
+    karar_duzenle -> indirim_sor [label="HAYIR"];
+    guncelle_urun -> guncelle_sifir;
+    guncelle_sifir -> indirim_sor [label="EVET"];
+    guncelle_sifir -> yeni_miktar [label="HAYIR"];
+    yeni_miktar -> stok_guncelle_kontrol;
+    stok_guncelle_kontrol -> sepet_guncelle [label="EVET"];
+    stok_guncelle_kontrol -> stok_yok2 [label="HAYIR"];
+    sepet_guncelle -> guncelle_urun;
+    stok_yok2 -> guncelle_urun;
+
+    // İndirim kodu
+    indirim_sor -> karar_indirim;
+    karar_indirim -> kod_al [label="EVET"];
+    karar_indirim -> adres_al [label="HAYIR"];
+    kod_al -> kod_guncel;
+    kod_guncel -> kod_uygula [label="EVET"];
+    kod_guncel -> kod_gecersiz [label="HAYIR"];
+    kod_uygula -> adres_al;
+    kod_gecersiz -> adres_al;
+
+    // Kargo ve ödeme
+    adres_al -> kargo_hesap -> toplam_hesap -> odeme_turu -> karar_odeme;
+    karar_odeme -> kart_bilgi [label="EVET"];
+    karar_odeme -> kapida [label="HAYIR"];
+    kart_bilgi -> odeme_onay;
+    odeme_onay -> odeme_basarili [label="EVET"];
+    odeme_onay -> odeme_basarisiz [label="HAYIR"];
+    odeme_basarili -> siparis_son;
+    odeme_basarisiz -> end;
+    kapida -> siparis_son;
+    siparis_son -> end;
+}
+
+
+Bu DOT dosyasını .dot uzantısıyla kaydedip terminalde şu komutla görselleştirebilirsin:
+
+dot -Tpng eticaret.dot -o eticaret.png
+
+
+İstersen bu diyagramı senin için görsel olarak da oluşturup gösterebilirim.
+İster misin onu da çizip sana sunayım?
+
+Şunu dedin:
+git hub için bu projenin read me kısmını oluştur kısa olsun
+ChatGPT:
+
+İşte bu proje için kısa bir README.md örneği:
+
+🛒 E-Ticaret Sepet ve Ödeme Sistemi
+
+Bu proje, bir e-ticaret sitesinde kullanıcı girişi, ürün ekleme, stok kontrolü, indirim kodu, kargo hesaplama ve ödeme işlemlerini simüle eden bir akış diyagramı içerir.
+
+Teknoloji: Graphviz (DOT dili)
+
+Yön: rankdir=TB
+
+Odak Noktaları:
+
+Sepet yönetimi
+
+Koşullu kontrol akışı (EVET/HAYIR)
+
+Ödeme süreci simülasyonu
+
+📂 Dosya: e_ticaret.dot
+🔍 Görselleştirme:
+
+dot -Tpng e_ticaret.dot -o e_ticaret.png
+
+
+İstersen bu README’yi uzun ve açıklamalı hale de getirebilirim (örneğin adım adım sistem tanımı, örnek çıktı, diyagram ekran görüntüsü ekleme gibi). İster misin öyle bir sürümünü de hazırlayayım?
+
+Şunu dedin:
+dostum dot dilini değil projenin kendisinin açıklamasını yap
+ChatGPT:
+
+Anladım dostum 😊 İşte projenin kendisini açıklayan kısa bir README.md örneği:
+
+🛍️ E-Ticaret Sepet ve Ödeme Sistemi
+
+Bu proje, bir e-ticaret platformunda alışveriş sepeti yönetimi ve ödeme sürecinin temel adımlarını simüle eder.
+
+🔹 Özellikler
+
+Kullanıcı Girişi: Sisteme kayıtlı kullanıcıların giriş yapması sağlanır.
+
+Ürün Ekleme: Kullanıcılar sepete ürün ekleyebilir veya silebilir.
+
+Stok Kontrolü: Ürün eklenmeden önce stok durumu kontrol edilir.
+
+İndirim Kodu: Kullanıcı geçerli bir indirim kodu girerse, toplam fiyata indirim uygulanır.
+
+Kargo Hesaplama: Ürün miktarına ve adrese göre kargo ücreti hesaplanır.
+
+Ödeme İşlemi: Kullanıcı ödeme bilgilerini girer, işlem doğrulanır ve sipariş tamamlanır.
+
+🧩 Amaç
+
+Gerçek bir e-ticaret sitesinin mantığını algoritmik olarak anlamak ve akış kontrolünü öğrenmek.
