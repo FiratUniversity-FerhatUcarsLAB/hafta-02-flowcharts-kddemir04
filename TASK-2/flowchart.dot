@@ -1,0 +1,108 @@
+digraph E_Ticaret {
+    rankdir=TB;
+    node [fontname="Arial"];
+
+    start [shape=ellipse, label="BAŞLA"];
+    login_choice [shape=parallelogram, label="Kullanıcı giriş yap veya kayıt ol?"];
+    
+    karar_kayit [shape=diamond, label="Kayıt ol seçildi mi?"];
+    yeni_kullanici [shape=box, label="Email ve şifre al\nYeni kullanıcı oluştur"];
+    giris [shape=box, label="Email ve şifre al\nGiriş bilgilerini doğrula"];
+    giris_dogru [shape=diamond, label="Giriş bilgileri doğru mu?"];
+    hatali_giris [shape=parallelogram, label="Hatalı giriş - sistem sonlanır"];
+    
+    urun_sec [shape=parallelogram, label="Ürün ID gir (0 çıkış)"];
+    urun_sifir [shape=diamond, label="Ürün ID = 0 mı?"];
+    miktar_al [shape=parallelogram, label="Kaç adet?"];
+    stok_kontrol [shape=diamond, label="Stok yeterli mi?"];
+    urun_ekle [shape=box, label="Ürünü sepete ekle"];
+    stok_yetersiz [shape=parallelogram, label="Yetersiz stok!"];
+    sepet_goster [shape=parallelogram, label="Sepeti göster"];
+    
+    sepet_duzenle_sor [shape=parallelogram, label="Sepeti düzenlemek ister misiniz? (E/H)"];
+    karar_duzenle [shape=diamond, label="Cevap = E mi?"];
+    guncelle_urun [shape=parallelogram, label="Ürün ID gir (0 çıkış)"];
+    guncelle_sifir [shape=diamond, label="Ürün ID = 0 mı?"];
+    yeni_miktar [shape=parallelogram, label="Yeni miktar gir"];
+    stok_guncelle_kontrol [shape=diamond, label="Stok yeterli mi?"];
+    sepet_guncelle [shape=box, label="Sepet güncelle"];
+    stok_yok2 [shape=parallelogram, label="Stok yetersiz"];
+    
+    indirim_sor [shape=parallelogram, label="İndirim kodu var mı? (E/H)"];
+    karar_indirim [shape=diamond, label="Cevap = E mi?"];
+    kod_al [shape=parallelogram, label="Kodu gir"];
+    kod_guncel [shape=diamond, label="Kupon geçerli mi?"];
+    kod_uygula [shape=box, label="İndirim uygula"];
+    kod_gecersiz [shape=parallelogram, label="Geçersiz kod"];
+    
+    adres_al [shape=parallelogram, label="Adres gir"];
+    kargo_hesap [shape=box, label="Kargo ücretini hesapla"];
+    toplam_hesap [shape=box, label="Genel toplamı hesapla"];
+    odeme_turu [shape=parallelogram, label="Ödeme türünü seç (1-Kart, 2-Kapıda)"];
+    karar_odeme [shape=diamond, label="Ödeme türü = Kart mı?"];
+    
+    kart_bilgi [shape=parallelogram, label="Kart bilgilerini gir"];
+    odeme_onay [shape=diamond, label="Ödeme onaylandı mı?"];
+    odeme_basarili [shape=box, label="Stok güncelle, sipariş oluştur (ÖDENDİ)"];
+    odeme_basarisiz [shape=parallelogram, label="Ödeme başarısız - bitir"];
+    
+    kapida [shape=box, label="Sipariş oluştur (KAPIDA ÖDEME)"];
+    siparis_son [shape=parallelogram, label="Sipariş oluşturuldu, teşekkürler!"];
+    end [shape=ellipse, label="BİTİR"];
+
+    // Bağlantılar
+    start -> login_choice -> karar_kayit;
+    karar_kayit -> yeni_kullanici [label="EVET"];
+    karar_kayit -> giris [label="HAYIR"];
+    yeni_kullanici -> urun_sec;
+    giris -> giris_dogru;
+    giris_dogru -> urun_sec [label="EVET"];
+    giris_dogru -> hatali_giris [label="HAYIR"];
+    hatali_giris -> end;
+
+    // Sepet ekleme döngüsü
+    urun_sec -> urun_sifir;
+    urun_sifir -> sepet_goster [label="EVET"];
+    urun_sifir -> miktar_al [label="HAYIR"];
+    miktar_al -> stok_kontrol;
+    stok_kontrol -> urun_ekle [label="EVET"];
+    stok_kontrol -> stok_yetersiz [label="HAYIR"];
+    urun_ekle -> urun_sec;
+    stok_yetersiz -> urun_sec;
+
+    // Sepet gösterme ve düzenleme
+    sepet_goster -> sepet_duzenle_sor;
+    sepet_duzenle_sor -> karar_duzenle;
+    karar_duzenle -> guncelle_urun [label="EVET"];
+    karar_duzenle -> indirim_sor [label="HAYIR"];
+    guncelle_urun -> guncelle_sifir;
+    guncelle_sifir -> indirim_sor [label="EVET"];
+    guncelle_sifir -> yeni_miktar [label="HAYIR"];
+    yeni_miktar -> stok_guncelle_kontrol;
+    stok_guncelle_kontrol -> sepet_guncelle [label="EVET"];
+    stok_guncelle_kontrol -> stok_yok2 [label="HAYIR"];
+    sepet_guncelle -> guncelle_urun;
+    stok_yok2 -> guncelle_urun;
+
+    // İndirim kodu
+    indirim_sor -> karar_indirim;
+    karar_indirim -> kod_al [label="EVET"];
+    karar_indirim -> adres_al [label="HAYIR"];
+    kod_al -> kod_guncel;
+    kod_guncel -> kod_uygula [label="EVET"];
+    kod_guncel -> kod_gecersiz [label="HAYIR"];
+    kod_uygula -> adres_al;
+    kod_gecersiz -> adres_al;
+
+    // Kargo ve ödeme
+    adres_al -> kargo_hesap -> toplam_hesap -> odeme_turu -> karar_odeme;
+    karar_odeme -> kart_bilgi [label="EVET"];
+    karar_odeme -> kapida [label="HAYIR"];
+    kart_bilgi -> odeme_onay;
+    odeme_onay -> odeme_basarili [label="EVET"];
+    odeme_onay -> odeme_basarisiz [label="HAYIR"];
+    odeme_basarili -> siparis_son;
+    odeme_basarisiz -> end;
+    kapida -> siparis_son;
+    siparis_son -> end;
+}
