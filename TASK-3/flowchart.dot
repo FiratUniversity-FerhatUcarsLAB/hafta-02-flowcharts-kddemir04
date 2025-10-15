@@ -1,0 +1,78 @@
+digraph HastaneOtomasyonSistemi {
+    rankdir=TB;
+    node [shape=rectangle, style=rounded, fontname="Arial"];
+
+    // Başlangıç ve Bitiş
+    Start [label="BAŞLA", shape=oval, style=filled, fillcolor=lightgreen];
+    End [label="BİTİR", shape=oval, style=filled, fillcolor=lightcoral];
+
+    // Kimlik doğrulama
+    Auth [label="TC Kimlik ve Şifre al"];
+    CheckAuth [label="Kimlik bilgileri doğru mu?", shape=diamond];
+    AuthFail [label="Kimlik bilgileri hatalı!", shape=parallelogram];
+
+    // Ana menü
+    Menu [label="Ana Menü Göster:\n1-Randevu\n2-Tahlil\n3-Çıkış"];
+    Choice [label="Seçim al (1,2,3)", shape=parallelogram];
+
+    // --- Randevu Sistemi ---
+    Poliklinik [label="Poliklinik listesini göster"];
+    PolikSec [label="Poliklinik seçimi al"];
+    DoktorList [label="Doktor listesini göster"];
+    DoktorSec [label="Doktor seçimi al"];
+    SaatList [label="Uygun saatleri göster"];
+    SaatSec [label="Saat seçimi al"];
+    SaatKontrol [label="Seçilen saat uygun mu?", shape=diamond];
+    RandevuOlustur [label="Randevu oluştur ve SMS gönder"];
+    SaatUygunDegil [label="Seçilen saat artık uygun değil", shape=parallelogram];
+
+    // --- Tahlil Sonucu Görüntüleme ---
+    TahlilVar [label="Tahlil kaydı var mı?", shape=diamond];
+    TahlilHazir [label="Tahlil sonucu hazır mı?", shape=diamond];
+    SonucGoster [label="Tahlil sonucunu göster"];
+    PdfSoru [label="PDF olarak indirmek ister misiniz?", shape=diamond];
+    PdfEvet [label="PDF oluştur ve indir"];
+    PdfHayir [label="İşlem sonlandırıldı", shape=parallelogram];
+    TahlilBekle [label="Sonuç henüz hazır değil", shape=parallelogram];
+    TahlilYok [label="Tahlil kaydı bulunamadı", shape=parallelogram];
+
+    // Çıkış
+    Exit [label="Sistemden çıkılıyor...", shape=parallelogram];
+
+    // Bağlantılar
+    Start -> Auth -> CheckAuth;
+    CheckAuth -> AuthFail [label="HAYIR"];
+    AuthFail -> End;
+    CheckAuth -> Menu [label="EVET"];
+
+    Menu -> Choice;
+    Choice -> Poliklinik [label="1"];
+    Choice -> TahlilVar [label="2"];
+    Choice -> Exit [label="3"];
+    Choice -> Menu [label="Diğer"];
+
+    // --- Randevu Modülü ---
+    Poliklinik -> PolikSec -> DoktorList -> DoktorSec -> SaatList -> SaatSec -> SaatKontrol;
+    SaatKontrol -> RandevuOlustur [label="EVET"];
+    SaatKontrol -> SaatUygunDegil [label="HAYIR"];
+    RandevuOlustur -> Menu;
+    SaatUygunDegil -> Menu;
+
+    // --- Tahlil Modülü ---
+    TahlilVar -> TahlilHazir [label="EVET"];
+    TahlilVar -> TahlilYok [label="HAYIR"];
+    TahlilYok -> Menu;
+
+    TahlilHazir -> SonucGoster [label="EVET"];
+    TahlilHazir -> TahlilBekle [label="HAYIR"];
+    TahlilBekle -> Menu;
+
+    SonucGoster -> PdfSoru;
+    PdfSoru -> PdfEvet [label="EVET"];
+    PdfSoru -> PdfHayir [label="HAYIR"];
+    PdfEvet -> Menu;
+    PdfHayir -> Menu;
+
+    // Çıkış
+    Exit -> End;
+}
