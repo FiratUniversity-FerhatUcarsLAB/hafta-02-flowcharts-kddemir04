@@ -1,0 +1,286 @@
+Hastane randevu sistemi i¸cin algoritma: kimlik do˘grulama, poliklinik se¸cimi, doktor listesi g¨or¨unt¨uleme, uygun saatleri g¨osterme, randevu onaylama ve SMS g¨onderme. Pseudocode yaz
+ChatGPT:
+
+İşte hastane randevu sistemi için adım adım pseudocode:
+
+🏥 Hastane Randevu Sistemi Pseudocode
+BAŞLA
+
+// 1. Kimlik Doğrulama
+KULLANICIDAN TC_KIMLIK, SIFRE AL
+EĞER (TC_KIMLIK ve SIFRE DOĞRUYSA) 
+    DEVAM ET
+DEĞİLSE
+    "Kimlik bilgileri hatalı!" YAZ
+    BİTİR
+
+// 2. Poliklinik Seçimi
+POLIKLINIK_LISTESINI_GÖSTER()
+KULLANICIDAN POLIKLINIK_SECIMI AL
+
+// 3. Doktor Listesi Görüntüleme
+DOKTOR_LISTESI = POLIKLINIGE_GÖRE_DOKTORLAR(POLIKLINIK_SECIMI)
+DOKTOR_LISTESINI_GÖSTER()
+KULLANICIDAN DOKTOR_SECIMI AL
+
+// 4. Uygun Saatleri Gösterme
+UYGUN_SAATLER = DOKTORUN_UYGUN_SAATLERI(DOKTOR_SECIMI)
+UYGUN_SAATLERI_GÖSTER()
+KULLANICIDAN SAAT_SECIMI AL
+
+// 5. Randevu Onaylama
+EĞER SAAT_SECIMI UYGUNSA
+    RANDEVU_OLUSTUR(TC_KIMLIK, DOKTOR_SECIMI, SAAT_SECIMI)
+    "Randevunuz başarıyla oluşturuldu." YAZ
+    // 6. SMS Gönderme
+    SMS_GÖNDER(TC_KIMLIK, "Randevunuz onaylandı: " + SAAT_SECIMI)
+DEĞİLSE
+    "Seçilen saat artık uygun değil!" YAZ
+
+BİTİR
+
+
+İstersen bu pseudocode’u Graphviz DOT formatına veya Java / Python koda da dönüştürebilirim.
+Hangisini istersin?
+
+Şunu dedin:
+Tahlil sonucu g¨or¨unt¨uleme sistemi: kimlik do˘grulama, tahlil varlı˘gı kontrol¨u, sonu¸c hazır mı kontrol¨u, g¨or¨unt¨uleme veya bekleme mesajı, PDF indirme. Pseudocode yaz
+ChatGPT:
+
+İşte tahlil sonucu görüntüleme sistemi için adım adım açıklamalı pseudocode 👇
+
+🧪 Tahlil Sonucu Görüntüleme Sistemi Pseudocode
+BAŞLA
+
+// 1. Kimlik Doğrulama
+KULLANICIDAN TC_KIMLIK, SIFRE AL
+EĞER (TC_KIMLIK ve SIFRE DOĞRUYSA)
+    DEVAM ET
+DEĞİLSE
+    "Kimlik bilgileri hatalı!" YAZ
+    BİTİR
+
+// 2. Tahlil Varlığı Kontrolü
+EĞER (TAHLIL_VAR_MI(TC_KIMLIK))
+    DEVAM ET
+DEĞİLSE
+    "Herhangi bir tahlil kaydınız bulunmamaktadır." YAZ
+    BİTİR
+
+// 3. Sonuç Hazır mı Kontrolü
+EĞER (TAHLIL_HAZIR_MI(TC_KIMLIK))
+    // 4. Görüntüleme
+    TAHLIL_SONUCU = TAHLIL_SONUCU_GETIR(TC_KIMLIK)
+    TAHLIL_SONUCU_GÖSTER(TAHLIL_SONUCU)
+
+    // 5. PDF İndirme
+    KULLANICIYA "Sonucu PDF olarak indirmek ister misiniz?" DİYE SOR
+    EĞER (EVET)
+        PDF_OLUSTUR(TAHLIL_SONUCU)
+        "PDF indiriliyor..." YAZ
+    DEĞİLSE
+        "İşlem sonlandırıldı." YAZ
+DEĞİLSE
+    "Tahlil sonucunuz henüz hazır değil. Lütfen daha sonra tekrar deneyiniz." YAZ
+
+BİTİR
+
+
+İstersen bunu Graphviz DOT akış şeması formatına da dönüştürebilirim (örneğin GitHub veya ödev sunumu için).
+Hazırlayayım mı?
+
+Şunu dedin:
+Ana men¨u ile iki mod¨ul¨u birle¸stirin
+ChatGPT:
+
+Harika 👍
+O zaman önceki iki sistemi (Randevu Sistemi + Tahlil Sonucu Görüntüleme Sistemi) tek bir ana menü altında birleştirelim.
+Aşağıdaki pseudocode, kullanıcı girişinden sonra hangi işlemi yapmak istediğini sorar ve ilgili modüle yönlendirir 👇
+
+🏥 Hastane Otomasyon Sistemi (Ana Menü + 2 Modül)
+BAŞLA
+
+// 1. Kimlik Doğrulama
+KULLANICIDAN TC_KIMLIK, SIFRE AL
+EĞER (TC_KIMLIK ve SIFRE DOĞRUYSA)
+    DEVAM ET
+DEĞİLSE
+    "Kimlik bilgileri hatalı!" YAZ
+    BİTİR
+
+// 2. Ana Menü
+TEKRARLA
+    "----- ANA MENÜ -----" YAZ
+    "1 - Randevu Sistemi" YAZ
+    "2 - Tahlil Sonucu Görüntüleme" YAZ
+    "3 - Çıkış" YAZ
+    KULLANICIDAN SECIM AL
+
+    EĞER (SECIM == 1) İSE
+        // --- RANDEVU SİSTEMİ ---
+        POLIKLINIK_LISTESINI_GÖSTER()
+        KULLANICIDAN POLIKLINIK_SECIMI AL
+
+        DOKTOR_LISTESI = POLIKLINIGE_GÖRE_DOKTORLAR(POLIKLINIK_SECIMI)
+        DOKTOR_LISTESINI_GÖSTER()
+        KULLANICIDAN DOKTOR_SECIMI AL
+
+        UYGUN_SAATLER = DOKTORUN_UYGUN_SAATLERI(DOKTOR_SECIMI)
+        UYGUN_SAATLERI_GÖSTER()
+        KULLANICIDAN SAAT_SECIMI AL
+
+        EĞER SAAT_SECIMI UYGUNSA
+            RANDEVU_OLUSTUR(TC_KIMLIK, DOKTOR_SECIMI, SAAT_SECIMI)
+            "Randevunuz başarıyla oluşturuldu." YAZ
+            SMS_GÖNDER(TC_KIMLIK, "Randevunuz onaylandı: " + SAAT_SECIMI)
+        DEĞİLSE
+            "Seçilen saat artık uygun değil!" YAZ
+
+    EĞER (SECIM == 2) İSE
+        // --- TAHLİL SONUCU GÖRÜNTÜLEME ---
+        EĞER (TAHLIL_VAR_MI(TC_KIMLIK))
+            EĞER (TAHLIL_HAZIR_MI(TC_KIMLIK))
+                TAHLIL_SONUCU = TAHLIL_SONUCU_GETIR(TC_KIMLIK)
+                TAHLIL_SONUCU_GÖSTER(TAHLIL_SONUCU)
+                KULLANICIYA "Sonucu PDF olarak indirmek ister misiniz?" DİYE SOR
+                EĞER (EVET)
+                    PDF_OLUSTUR(TAHLIL_SONUCU)
+                    "PDF indiriliyor..." YAZ
+                DEĞİLSE
+                    "İşlem sonlandırıldı." YAZ
+            DEĞİLSE
+                "Tahlil sonucunuz henüz hazır değil. Lütfen daha sonra tekrar deneyiniz." YAZ
+        DEĞİLSE
+            "Herhangi bir tahlil kaydınız bulunmamaktadır." YAZ
+
+    EĞER (SECIM == 3) İSE
+        "Sistemden çıkılıyor..." YAZ
+        ÇIKIŞ_YAP()
+        DÖNGÜDEN ÇIK
+
+    DEĞİLSE
+        "Geçersiz seçim! Lütfen 1, 2 veya 3 girin." YAZ
+
+SONA KADAR TEKRARLA
+
+BİTİR
+
+
+İstersen bu birleşik sistemi Graphviz DOT formatında akış diyagramı olarak da çıkarabilirim.
+Hazırlayayım mı?
+
+Şunu dedin:
+bunu dot diline çevir
+ChatGPT:
+
+Tabii 👇
+Aşağıda yukarıdaki “Hastane Otomasyon Sistemi (Ana Menü + 2 Modül)” algoritmasının Graphviz DOT diliyle yazılmış akış diyagramı bulunuyor:
+
+🏥 Graphviz DOT Kodu
+digraph HastaneOtomasyonSistemi {
+    rankdir=TB;
+    node [shape=rectangle, style=rounded, fontname="Arial"];
+
+    // Başlangıç ve Bitiş
+    Start [label="BAŞLA", shape=oval, style=filled, fillcolor=lightgreen];
+    End [label="BİTİR", shape=oval, style=filled, fillcolor=lightcoral];
+
+    // Kimlik doğrulama
+    Auth [label="TC Kimlik ve Şifre al"];
+    CheckAuth [label="Kimlik bilgileri doğru mu?", shape=diamond];
+    AuthFail [label="Kimlik bilgileri hatalı!", shape=parallelogram];
+
+    // Ana menü
+    Menu [label="Ana Menü Göster:\n1-Randevu\n2-Tahlil\n3-Çıkış"];
+    Choice [label="Seçim al (1,2,3)", shape=parallelogram];
+
+    // --- Randevu Sistemi ---
+    Poliklinik [label="Poliklinik listesini göster"];
+    PolikSec [label="Poliklinik seçimi al"];
+    DoktorList [label="Doktor listesini göster"];
+    DoktorSec [label="Doktor seçimi al"];
+    SaatList [label="Uygun saatleri göster"];
+    SaatSec [label="Saat seçimi al"];
+    SaatKontrol [label="Seçilen saat uygun mu?", shape=diamond];
+    RandevuOlustur [label="Randevu oluştur ve SMS gönder"];
+    SaatUygunDegil [label="Seçilen saat artık uygun değil", shape=parallelogram];
+
+    // --- Tahlil Sonucu Görüntüleme ---
+    TahlilVar [label="Tahlil kaydı var mı?", shape=diamond];
+    TahlilHazir [label="Tahlil sonucu hazır mı?", shape=diamond];
+    SonucGoster [label="Tahlil sonucunu göster"];
+    PdfSoru [label="PDF olarak indirmek ister misiniz?", shape=diamond];
+    PdfEvet [label="PDF oluştur ve indir"];
+    PdfHayir [label="İşlem sonlandırıldı", shape=parallelogram];
+    TahlilBekle [label="Sonuç henüz hazır değil", shape=parallelogram];
+    TahlilYok [label="Tahlil kaydı bulunamadı", shape=parallelogram];
+
+    // Çıkış
+    Exit [label="Sistemden çıkılıyor...", shape=parallelogram];
+
+    // Bağlantılar
+    Start -> Auth -> CheckAuth;
+    CheckAuth -> AuthFail [label="HAYIR"];
+    AuthFail -> End;
+    CheckAuth -> Menu [label="EVET"];
+
+    Menu -> Choice;
+    Choice -> Poliklinik [label="1"];
+    Choice -> TahlilVar [label="2"];
+    Choice -> Exit [label="3"];
+    Choice -> Menu [label="Diğer"];
+
+    // --- Randevu Modülü ---
+    Poliklinik -> PolikSec -> DoktorList -> DoktorSec -> SaatList -> SaatSec -> SaatKontrol;
+    SaatKontrol -> RandevuOlustur [label="EVET"];
+    SaatKontrol -> SaatUygunDegil [label="HAYIR"];
+    RandevuOlustur -> Menu;
+    SaatUygunDegil -> Menu;
+
+    // --- Tahlil Modülü ---
+    TahlilVar -> TahlilHazir [label="EVET"];
+    TahlilVar -> TahlilYok [label="HAYIR"];
+    TahlilYok -> Menu;
+
+    TahlilHazir -> SonucGoster [label="EVET"];
+    TahlilHazir -> TahlilBekle [label="HAYIR"];
+    TahlilBekle -> Menu;
+
+    SonucGoster -> PdfSoru;
+    PdfSoru -> PdfEvet [label="EVET"];
+    PdfSoru -> PdfHayir [label="HAYIR"];
+    PdfEvet -> Menu;
+    PdfHayir -> Menu;
+
+    // Çıkış
+    Exit -> End;
+}
+
+
+Bu kodu bir .dot dosyasına kaydedip Graphviz
+ veya VSCode eklentileriyle görselleştirebilirsin.
+
+İstersen bu diyagramı SVG / PNG olarak da çıkartmamı sağlayabilirim.
+İster misin?
+
+Şunu dedin:
+ve bana github da read me kısmı için kısa bir aıklama yaz hastane otomasyon sistemini tanıtan
+ChatGPT:
+
+Tabii 😊 İşte GitHub’daki README dosyana ekleyebileceğin kısa ve etkili bir açıklama örneği:
+
+🏥 Hastane Otomasyon Sistemi
+
+Bu proje, hastane süreçlerini dijitalleştirmeyi amaçlayan basit bir konsol tabanlı otomasyon sistemidir.
+Kullanıcı kimlik doğrulaması sonrası iki ana modül sunar:
+
+Randevu Sistemi:
+Kullanıcılar poliklinik seçimi yaparak doktor listesini görüntüler, uygun saatleri seçip randevularını oluşturabilir.
+Onaylanan randevular için SMS bilgilendirmesi yapılır.
+
+Tahlil Sonucu Görüntüleme:
+Kullanıcı mevcut tahlil kayıtlarını kontrol eder, sonuç hazırsa görüntüleyebilir veya PDF olarak indirebilir.
+Henüz hazır olmayan sonuçlar için bilgilendirme mesajı gösterilir.
+
+Sistem temel kontrol yapıları (koşullar, döngüler, karar noktaları) ile tasarlanmış olup, pseudocode ve Graphviz DOT diyagramı içerir.
+Eğitim, proje ödevi veya algoritma temellerini öğrenmek için uygundur.
