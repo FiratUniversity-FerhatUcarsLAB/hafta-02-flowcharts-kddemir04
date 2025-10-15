@@ -1,0 +1,76 @@
+digraph AkilliEvGuvenlik {
+    rankdir=TB; // Yukarıdan aşağıya sıralama
+
+    // Başlangıç
+    Start [label="Başla", shape=oval];
+
+    // Sistem aktif mi?
+    CheckSystem [label="Sistem Aktif mi?", shape=diamond];
+
+    // Sensör okuma
+    SensorLoop [label="Sensör Okuma Döngüsü\n(Sürekli)", shape=box];
+
+    // Hareket sensörü kontrolü
+    MotionCheck [label="Hareket Sensörü Kontrolü", shape=diamond];
+    MotionDetected [label="Hareket Algılandı", shape=box];
+    
+    // Kapı/pencere sensörü kontrolü
+    DoorWindowCheck [label="Kapı/Pencere Sensörü Kontrolü", shape=diamond];
+    DoorWindowDetected [label="Kapı/Pencere Açıldı", shape=box];
+
+    // Kamera aktivasyonu
+    CameraActivate [label="Kamera Aktivasyonu", shape=box];
+
+    // Yanlış alarm kontrolü
+    FalseAlarmCheck [label="Ev Sahibi Evde mi?", shape=diamond];
+    
+    // Alarm seviyesi belirleme
+    AlarmLevel [label="Alarm Seviyesi Belirle\n(1-Düşük,2-Orta,3-Yüksek)", shape=box];
+
+    // Alarmı tetikle
+    TriggerAlarm [label="Alarm Çal", shape=box];
+
+    // Bildirim gönder
+    Notify [label="Bildirim Gönder\n(SMS + App + Email)", shape=box];
+
+    // Bekle ve tekrar kontrol et
+    Wait [label="Bekle ve Tekrar Kontrol Et", shape=box];
+
+    // Alarm sıfırlama veya devam ettirme
+    ResetOrContinue [label="Alarm Sıfırla veya Devam Ettir", shape=diamond];
+
+    // Sistem kapalıysa bekle
+    SystemInactiveWait [label="Sistem Kapalı, Bekle 5s", shape=box];
+
+    // Bağlantılar
+    Start -> CheckSystem;
+    
+    CheckSystem -> SensorLoop [label="Evet"];
+    CheckSystem -> SystemInactiveWait [label="Hayır"];
+
+    SensorLoop -> MotionCheck;
+    MotionCheck -> MotionDetected [label="Evet"];
+    MotionCheck -> DoorWindowCheck [label="Hayır"];
+
+    DoorWindowCheck -> DoorWindowDetected [label="Evet"];
+    DoorWindowCheck -> FalseAlarmCheck [label="Hayır"];
+
+    MotionDetected -> CameraActivate;
+    DoorWindowDetected -> CameraActivate;
+
+    CameraActivate -> FalseAlarmCheck;
+
+    FalseAlarmCheck -> Wait [label="Evet (Evde)"];
+    FalseAlarmCheck -> AlarmLevel [label="Hayır (Evde Değil)"];
+
+    AlarmLevel -> TriggerAlarm;
+    TriggerAlarm -> Notify;
+    Notify -> Wait;
+
+    Wait -> ResetOrContinue;
+
+    ResetOrContinue -> SensorLoop [label="Sürekli", style=dashed]; // Sonsuz döngü geri ok
+    ResetOrContinue -> Start [label="Alarm Devam Ettir", style=dotted];
+
+    SystemInactiveWait -> CheckSystem;
+}
