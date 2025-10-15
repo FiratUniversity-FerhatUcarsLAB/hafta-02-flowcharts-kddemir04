@@ -1,0 +1,265 @@
+algoLab ödevi için üniversite ders kayıt sistemi oluşturacağız . giriş ders listesi, ders seçimi, kontroller ve onaylama içermeli. kontenjan, ön koşul, zaman çakışması ,kredi limiti, danışman onayı gibi kontroller içermeli  T¨um bu kontrollerle birlikte detaylı pseudocode yaz. ˙ I¸c i¸ce E˘ GER-˙ ISE yapıları ve d¨ong¨uler kullan
+ChatGPT:
+
+Harika bir ödev konusu seçmişsiniz 🎓 — bu tür sistemler algoritma mantığını uygulamalı biçimde göstermek için çok uygun.
+Aşağıda, üniversite ders kayıt sistemi için tüm kontrolleri kapsayan detaylı pseudocode yer alıyor.
+İç içe EĞER–İSE, DEĞİLSE, DÖNGÜ yapılarıyla tam algoritmik biçimde yazdım.
+
+📘 Ders Kayıt Sistemi – Pseudocode
+BAŞLA
+
+    // --- 1. GİRİŞ EKRANI ---
+    YAZ "Ders Kayıt Sistemine Hoşgeldiniz"
+    YAZ "Öğrenci numaranızı giriniz: "
+    OKU ogrenciNo
+    YAZ "Şifrenizi giriniz: "
+    OKU sifre
+
+    EĞER kimlikDogrula(ogrenciNo, sifre) = DOĞRU İSE
+        YAZ "Giriş başarılı."
+    DEĞİLSE
+        YAZ "Hatalı giriş. Program sonlandırılıyor."
+        BİTİR
+    SON
+
+    // --- 2. DERS LİSTESİNİ GÖSTER ---
+    YAZ "Alınabilecek dersler:"
+    DÖNGÜ i = 1'dan dersiSayısına kadar
+        YAZ dersListesi[i].ad, " (Kredi:", dersListesi[i].kredi, 
+            ", Kontenjan:", dersListesi[i].kontenjan, 
+            ", Ön koşul:", dersListesi[i].onKosul, 
+            ", Gün/Saat:", dersListesi[i].zaman, ")"
+    SON
+
+    // --- 3. DERS SEÇİMİ ---
+    seçilenDersler ← boş liste
+    toplamKredi ← 0
+
+    DÖNGÜ
+        YAZ "Ders kodunu giriniz (veya 0 ile bitir): "
+        OKU dersKod
+
+        EĞER dersKod = 0 İSE
+            ÇIK DÖNGÜDEN
+        SON
+
+        ders ← dersBul(dersKod)
+
+        EĞER ders = YOKSA
+            YAZ "Geçersiz ders kodu!"
+        DEĞİLSE
+            // --- 4. KONTROLLER ---
+            
+            // 4.1. Kontenjan kontrolü
+            EĞER ders.kontenjan = 0 İSE
+                YAZ "Bu dersin kontenjanı dolu!"
+            DEĞİLSE
+                // 4.2. Ön koşul kontrolü
+                EĞER ders.onKosul ≠ YOKSA
+                    EĞER onKosulSaglandiMi(ogrenciNo, ders.onKosul) = YANLIŞ İSE
+                        YAZ "Ön koşul dersi tamamlanmamış: ", ders.onKosul
+                    DEĞİLSE
+                        // 4.3. Zaman çakışması kontrolü
+                        zamanCakisti ← YANLIŞ
+                        DÖNGÜ her secilen IN seçilenDersler
+                            EĞER ders.zaman = secilen.zaman İSE
+                                zamanCakisti ← DOĞRU
+                            SON
+                        SON
+
+                        EĞER zamanCakisti = DOĞRU İSE
+                            YAZ "Bu ders, seçilen başka bir dersle çakışıyor!"
+                        DEĞİLSE
+                            // 4.4. Kredi limiti kontrolü
+                            EĞER toplamKredi + ders.kredi > ogrenciKrediLimiti(ogrenciNo) İSE
+                                YAZ "Kredi limitiniz aşılıyor!"
+                            DEĞİLSE
+                                // 4.5. Ders zaten seçilmiş mi kontrolü
+                                EĞER ders IN seçilenDersler İSE
+                                    YAZ "Bu dersi zaten seçtiniz!"
+                                DEĞİLSE
+                                    // TÜM KONTROLLER TAMAM
+                                    seçilenDersler’e ekle(ders)
+                                    toplamKredi ← toplamKredi + ders.kredi
+                                    YAZ ders.ad, " dersi başarıyla eklendi."
+                                SON
+                            SON
+                        SON
+                    SON
+                DEĞİLSE
+                    // Ön koşul yoksa direkt ekleme kontrolü
+                    EĞER toplamKredi + ders.kredi <= ogrenciKrediLimiti(ogrenciNo) İSE
+                        seçilenDersler’e ekle(ders)
+                        toplamKredi ← toplamKredi + ders.kredi
+                        YAZ ders.ad, " dersi başarıyla eklendi."
+                    DEĞİLSE
+                        YAZ "Kredi limitiniz aşılıyor!"
+                    SON
+                SON
+            SON
+        SON
+    SON DÖNGÜ
+
+    // --- 5. ONAYLAMA AŞAMASI ---
+    EĞER seçilenDersler BOŞSA
+        YAZ "Hiç ders seçilmedi. Kayıt tamamlanamadı."
+        BİTİR
+    SON
+
+    YAZ "Seçilen dersler:"
+    DÖNGÜ her ders IN seçilenDersler
+        YAZ "-", ders.ad, " (", ders.kredi, " kredi)"
+    SON
+    YAZ "Toplam kredi:", toplamKredi
+
+    YAZ "Danışman onayına gönderilsin mi? (E/H)"
+    OKU cevap
+
+    EĞER cevap = 'E' İSE
+        EĞER danismanOnayi(ogrenciNo, seçilenDersler) = DOĞRU İSE
+            YAZ "Ders kayıt işleminiz tamamlandı ✅"
+        DEĞİLSE
+            YAZ "Danışman onayı reddedildi ❌"
+        SON
+    DEĞİLSE
+        YAZ "Ders seçimi iptal edildi."
+    SON
+
+BİTİR
+
+💡 Ek Notlar:
+
+kimlikDogrula() → Öğrenci bilgilerini kontrol eder.
+
+dersBul() → Girilen ders koduna göre ders nesnesini döndürür.
+
+onKosulSaglandiMi() → Öğrencinin geçmiş derslerini kontrol eder.
+
+ogrenciKrediLimiti() → Her öğrenci için tanımlı kredi sınırını döndürür.
+
+danismanOnayi() → Danışman tarafından manuel veya otomatik onay simülasyonu yapar.
+
+İstersen bu pseudocode’u Graphviz DOT diyagramına da çevirebilirim, böylece akış şeması şeklinde gösterebiliriz.
+Bunu ister misin?
+
+Şunu dedin:
+bunu dot diline çevir
+ChatGPT:
+
+Elbette! 🎓
+Aşağıda, yukarıdaki üniversite ders kayıt sistemi algoritmasının tüm önemli adımlarını ve kontrollerini kapsayan Graphviz DOT kodu yer alıyor.
+Bu akış diyagramı rankdir=TB (yukarıdan aşağıya) yönünde çizilecektir.
+Karar noktalarında EVET / HAYIR etiketleri belirtilmiştir.
+
+digraph DersKayitSistemi {
+    rankdir=TB;
+    node [shape=rectangle, style=rounded, fontname="Arial"];
+
+    Start [label="BAŞLA"];
+    Giris [label="Giriş Ekranı:\nÖğrenci No ve Şifre Al"];
+    Kimlik [shape=diamond, label="Kimlik Doğrulama Başarılı mı?"];
+    Hata [label="Hatalı Giriş\nProgram Sonlanır"];
+    DersListe [label="Ders Listesini Göster"];
+    DersSecimi [label="Ders Kodunu Gir (0 = Bitir)"];
+    Gecersiz [label="Geçersiz Ders Kodu!"];
+    Kontenjan [shape=diamond, label="Kontenjan Dolu mu?"];
+    OnKosul [shape=diamond, label="Ön Koşul Var mı?"];
+    OnKosulSaglandi [shape=diamond, label="Ön Koşul Sağlandı mı?"];
+    Zaman [shape=diamond, label="Zaman Çakışması Var mı?"];
+    Kredi [shape=diamond, label="Kredi Limiti Aşılıyor mu?"];
+    ZatenSecildi [shape=diamond, label="Ders Zaten Seçildi mi?"];
+    Ekle [label="Ders Eklendi\nToplam Kredi Güncellendi"];
+    SonrakiDers [label="Sonraki Ders"];
+    SecimBitti [shape=diamond, label="Seçim Bitti mi? (dersKod=0)"];
+    BosMu [shape=diamond, label="Seçilen Ders Yok mu?"];
+    DersListele [label="Seçilen Dersleri Listele"];
+    Danisman [shape=diamond, label="Danışman Onayı Gönderilsin mi?"];
+    Onay [shape=diamond, label="Danışman Onayladı mı?"];
+    Basarili [label="Kayıt Tamamlandı ✅"];
+    Reddedildi [label="Danışman Onayı Reddedildi ❌"];
+    Iptal [label="Kayıt İptal Edildi"];
+    Bitir [label="BİTİR"];
+
+    // --- Akış bağlantıları ---
+    Start -> Giris -> Kimlik;
+    Kimlik -> DersListe [label="EVET"];
+    Kimlik -> Hata [label="HAYIR"];
+    Hata -> Bitir;
+
+    DersListe -> DersSecimi;
+    DersSecimi -> SecimBitti [label="dersKod=0"];
+    DersSecimi -> Gecersiz [label="Geçersiz Kod"];
+    Gecersiz -> DersSecimi;
+
+    DersSecimi -> Kontenjan [label="Geçerli Kod"];
+    Kontenjan -> DersSecimi [label="EVET (Dolu)"];
+    Kontenjan -> OnKosul [label="HAYIR"];
+
+    OnKosul -> Zaman [label="HAYIR (Yok)"];
+    OnKosul -> OnKosulSaglandi [label="EVET (Var)"];
+    OnKosulSaglandi -> DersSecimi [label="HAYIR"];
+    OnKosulSaglandi -> Zaman [label="EVET"];
+
+    Zaman -> DersSecimi [label="EVET (Çakışıyor)"];
+    Zaman -> Kredi [label="HAYIR"];
+
+    Kredi -> DersSecimi [label="EVET (Aşıyor)"];
+    Kredi -> ZatenSecildi [label="HAYIR"];
+
+    ZatenSecildi -> DersSecimi [label="EVET (Zaten Seçildi)"];
+    ZatenSecildi -> Ekle [label="HAYIR"];
+
+    Ekle -> SonrakiDers -> DersSecimi;
+
+    SecimBitti -> BosMu [label="EVET"];
+    SecimBitti -> DersSecimi [label="HAYIR"];
+
+    BosMu -> Bitir [label="EVET"];
+    BosMu -> DersListele [label="HAYIR"];
+
+    DersListele -> Danisman;
+    Danisman -> Onay [label="EVET"];
+    Danisman -> Iptal [label="HAYIR"];
+
+    Onay -> Basarili [label="EVET"];
+    Onay -> Reddedildi [label="HAYIR"];
+
+    Basarili -> Bitir;
+    Reddedildi -> Bitir;
+    Iptal -> Bitir;
+}
+
+
+Bu kodu .dot uzantılı bir dosyaya kaydedip (örneğin dersKayit.dot),
+Graphviz ile şu komutla görselleştirebilirsiniz:
+
+dot -Tpng dersKayit.dot -o dersKayit.png
+
+
+İstersen bu diyagramı renkli ve gruplara ayrılmış (örneğin “Giriş”, “Kontroller”, “Onaylama”) şekilde yeniden düzenleyebilirim — görsel olarak çok daha anlaşılır olur.
+Böyle bir versiyon ister misin?
+
+Şunu dedin:
+bu proje için bana github da readme kısmına yazabileceğim kısa bir açıklama yaz
+ChatGPT:
+
+Tabii! İşte ders kayıt sistemi projesi için GitHub README kısmına koyabileceğiniz kısa ve net bir açıklama:
+
+Üniversite Ders Kayıt Sistemi
+
+Bu proje, üniversite öğrencilerinin ders kayıt işlemlerini simüle eden bir sistemdir.
+Öğrenciler sisteme giriş yaparak ders listesini görebilir, ders seçebilir ve kontrollerden geçtikten sonra kayıtlarını tamamlayabilir.
+
+Özellikler ve Kontroller:
+
+Ders kontenjanı kontrolü
+
+Ön koşul kontrolü
+
+Zaman çakışması kontrolü
+
+Kredi limiti kontrolü
+
+Danışman onayı
+
+Sistem, iç içe EĞER–İSE yapıları ve döngüler kullanılarak algoritmik olarak tasarlanmıştır.
