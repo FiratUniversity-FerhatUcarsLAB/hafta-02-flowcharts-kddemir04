@@ -1,0 +1,200 @@
+ sonsuz döngü yaklaşımıyla Akıllı ev g¨uvenlik sistemi 7/24 ¸calı¸sır. Ana d¨ong¨u i¸cinde sens¨or okuma, tehdit algılama, alarm verme ve bildirim g¨onderme s¨ure¸clerini i¸ceren pseudocode yaz.
+sistem gereksinimleri şunlar:
+Sistem aktif mi kontrol¨u (ko¸sul) Sens¨or okuma d¨ong¨us¨u (d¨ong¨u- s¨urekli) Hareket sens¨or¨u kontrol¨u (ko¸sul) Kapı/pencere sens¨or¨u kontrol¨u (ko¸sul) Kamera aktivasyonu (ko¸sul) Yanlı¸s alarm kontrol¨u (ev sahibi evde mi?) (ko¸sul) Alarm seviyesi belirleme (1-d¨u¸s¨uk, 2-orta, 3-y¨uksek) (ko¸sul) Bildirim g¨onderme (SMS + App + Email) Bekle ve tekrar kontrol et (d¨ong¨u) Alarm sıfırlama veya devam ettirme (ko¸sul)
+ChatGPT:
+
+Tabii! İstediğin akıllı ev güvenlik sistemi için sonsuz döngü yaklaşımıyla pseudocode şöyle yazılabilir. Sistemi adım adım, gereksinimlerin doğrultusunda ele aldım:
+
+Başla
+
+// Sistem sürekli çalışacak
+while (true) {
+    
+    // Sistem aktif mi?
+    eğer (SistemAktif == true) {
+
+        // Sensör okuma döngüsü (sürekli)
+        hareketAlgilandi = false
+        kapiPencereAlgilandi = false
+
+        // Hareket sensörünü kontrol et
+        eğer (HareketSensoruAktif()) {
+            hareketAlgilandi = true
+        }
+
+        // Kapı/pencere sensörünü kontrol et
+        eğer (KapiPencereSensoruAktif()) {
+            kapiPencereAlgilandi = true
+        }
+
+        // Kamera aktivasyonu (opsiyonel, hareket veya kapı/pencere açıldığında)
+        eğer (hareketAlgilandi veya kapiPencereAlgilandi) {
+            KameraAktifEt()
+        }
+
+        // Yanlış alarm kontrolü (ev sahibi evde mi?)
+        eğer (EvSahibiEvde == true) {
+            AlarmVerme = false
+        } aksi halde {
+            AlarmVerme = hareketAlgilandi veya kapiPencereAlgilandi
+        }
+
+        // Alarm seviyesi belirleme
+        eğer (AlarmVerme) {
+            eğer (hareketAlgilandi ve kapiPencereAlgilandi) {
+                AlarmSeviyesi = 3 // Yüksek
+            } aksi halde eğer (hareketAlgilandi veya kapiPencereAlgilandi) {
+                AlarmSeviyesi = 2 // Orta
+            } aksi halde {
+                AlarmSeviyesi = 1 // Düşük
+            }
+
+            // Alarmı tetikle
+            AlarmCal(AlarmSeviyesi)
+
+            // Bildirim gönder
+            GonderBildirim("SMS", AlarmSeviyesi)
+            GonderBildirim("App", AlarmSeviyesi)
+            GonderBildirim("Email", AlarmSeviyesi)
+        }
+
+        // Bekle ve tekrar kontrol et
+        Bekle(1 saniye) // veya uygun süre
+
+        // Alarm sıfırlama veya devam ettirme kontrolü
+        eğer (EvSahibiEvde veya AlarmDurumuGecersiz) {
+            AlarmSifirla()
+        } aksi halde {
+            DevamEt()
+        }
+    } 
+    aksi halde {
+        Bekle(5 saniye) // Sistem kapalıysa aralıklarla kontrol
+    }
+}
+
+Açıklamalar:
+
+while(true) ile sistem 7/24 sürekli çalışıyor.
+
+Sensörler tek tek okunuyor ve alarm tetiklenme koşulları kontrol ediliyor.
+
+Yanlış alarm olasılığı için ev sahibi evde mi? kontrolü yapılıyor.
+
+Alarm seviyesi basit bir mantıkla belirleniyor (1: düşük, 2: orta, 3: yüksek).
+
+Bildirimler üç farklı kanal üzerinden gönderiliyor.
+
+Sistem aktif değilse, döngü daha uzun aralıklarla sadece kontrol ediyor.
+
+İstersen ben bunu Graphviz DOT diyagramı ile görselleştirip akış şeması haline de getirebilirim, böylece proje dokümantasyonunda kullanabilirsin.
+
+Bunu yapmamı ister misin?
+
+Şunu dedin:
+bunu bana dot diline çevir ancak istenen bir şey daha var: 
+DOT dilinde sonsuz d¨ong¨uy¨u g¨ostermek i¸cin geri ok kullanın ve ”S¨urekli” etiketi ekleyin.
+ChatGPT:
+
+Tamam! Senin pseudocode’unu DOT diline çevirip, sonsuz döngüyü “Sürekli” etiketiyle ve geri ok ile gösterecek şekilde hazırladım:
+
+digraph AkilliEvGuvenlik {
+    rankdir=TB; // Yukarıdan aşağıya sıralama
+
+    // Başlangıç
+    Start [label="Başla", shape=oval];
+
+    // Sistem aktif mi?
+    CheckSystem [label="Sistem Aktif mi?", shape=diamond];
+
+    // Sensör okuma
+    SensorLoop [label="Sensör Okuma Döngüsü\n(Sürekli)", shape=box];
+
+    // Hareket sensörü kontrolü
+    MotionCheck [label="Hareket Sensörü Kontrolü", shape=diamond];
+    MotionDetected [label="Hareket Algılandı", shape=box];
+    
+    // Kapı/pencere sensörü kontrolü
+    DoorWindowCheck [label="Kapı/Pencere Sensörü Kontrolü", shape=diamond];
+    DoorWindowDetected [label="Kapı/Pencere Açıldı", shape=box];
+
+    // Kamera aktivasyonu
+    CameraActivate [label="Kamera Aktivasyonu", shape=box];
+
+    // Yanlış alarm kontrolü
+    FalseAlarmCheck [label="Ev Sahibi Evde mi?", shape=diamond];
+    
+    // Alarm seviyesi belirleme
+    AlarmLevel [label="Alarm Seviyesi Belirle\n(1-Düşük,2-Orta,3-Yüksek)", shape=box];
+
+    // Alarmı tetikle
+    TriggerAlarm [label="Alarm Çal", shape=box];
+
+    // Bildirim gönder
+    Notify [label="Bildirim Gönder\n(SMS + App + Email)", shape=box];
+
+    // Bekle ve tekrar kontrol et
+    Wait [label="Bekle ve Tekrar Kontrol Et", shape=box];
+
+    // Alarm sıfırlama veya devam ettirme
+    ResetOrContinue [label="Alarm Sıfırla veya Devam Ettir", shape=diamond];
+
+    // Sistem kapalıysa bekle
+    SystemInactiveWait [label="Sistem Kapalı, Bekle 5s", shape=box];
+
+    // Bağlantılar
+    Start -> CheckSystem;
+    
+    CheckSystem -> SensorLoop [label="Evet"];
+    CheckSystem -> SystemInactiveWait [label="Hayır"];
+
+    SensorLoop -> MotionCheck;
+    MotionCheck -> MotionDetected [label="Evet"];
+    MotionCheck -> DoorWindowCheck [label="Hayır"];
+
+    DoorWindowCheck -> DoorWindowDetected [label="Evet"];
+    DoorWindowCheck -> FalseAlarmCheck [label="Hayır"];
+
+    MotionDetected -> CameraActivate;
+    DoorWindowDetected -> CameraActivate;
+
+    CameraActivate -> FalseAlarmCheck;
+
+    FalseAlarmCheck -> Wait [label="Evet (Evde)"];
+    FalseAlarmCheck -> AlarmLevel [label="Hayır (Evde Değil)"];
+
+    AlarmLevel -> TriggerAlarm;
+    TriggerAlarm -> Notify;
+    Notify -> Wait;
+
+    Wait -> ResetOrContinue;
+
+    ResetOrContinue -> SensorLoop [label="Sürekli", style=dashed]; // Sonsuz döngü geri ok
+    ResetOrContinue -> Start [label="Alarm Devam Ettir", style=dotted];
+
+    SystemInactiveWait -> CheckSystem;
+}
+
+Açıklamalar:
+
+Sürekli etiketi ile sonsuz döngüyü gösterdim.
+
+style=dashed veya style=dotted ile geri dönüş yolları vurgulandı.
+
+Her karar noktası diamond, işlem adımları box, başlangıç/bitiriş oval şeklinde.
+
+Sensör okuma döngüsü “Sürekli” olarak işaretlendi ve geri ok ile tekrar başa dönüyor.
+
+İstersen bunu daha görsel bir şekilde, renkli ve alarm seviyelerine göre farklı renkte düğümlerle geliştirebilirim, böylece DOT diyagramı gerçekten okunması kolay olur.
+
+Bunu yapmamı ister misin?
+
+Şunu dedin:
+Bu proje için readme kısmına ekleyebileceğim kısa bir açıklama metni hazırla
+ChatGPT:
+
+Tabii! İşte senin Akıllı Ev Güvenlik Sistemi projen için GitHub README’ına ekleyebileceğin kısa ve açıklayıcı bir metin:
+
+Akıllı Ev Güvenlik Sistemi
+
+Bu proje, evinizi 7/24 izleyen bir akıllı güvenlik sistemi simülasyonudur. Sistem, hareket ve kapı/pencere sensörlerini sürekli olarak takip eder, tehdit algıladığında alarm verir ve SMS, mobil uygulama ve e-posta ile bildirim gönderir. Yanlış alarmları önlemek için ev sahibi kontrolü yapılır ve alarm seviyesi duruma göre düşük, orta veya yüksek olarak belirlenir. Projede sonsuz döngü yaklaşımı ile sistemin sürekli çalışması ve sensör verilerinin gerçek zamanlı kontrolü sağlanmıştır.
