@@ -1,0 +1,77 @@
+digraph DersKayitSistemi {
+    rankdir=TB;
+    node [shape=rectangle, style=rounded, fontname="Arial"];
+
+    Start [label="BAŞLA"];
+    Giris [label="Giriş Ekranı:\nÖğrenci No ve Şifre Al"];
+    Kimlik [shape=diamond, label="Kimlik Doğrulama Başarılı mı?"];
+    Hata [label="Hatalı Giriş\nProgram Sonlanır"];
+    DersListe [label="Ders Listesini Göster"];
+    DersSecimi [label="Ders Kodunu Gir (0 = Bitir)"];
+    Gecersiz [label="Geçersiz Ders Kodu!"];
+    Kontenjan [shape=diamond, label="Kontenjan Dolu mu?"];
+    OnKosul [shape=diamond, label="Ön Koşul Var mı?"];
+    OnKosulSaglandi [shape=diamond, label="Ön Koşul Sağlandı mı?"];
+    Zaman [shape=diamond, label="Zaman Çakışması Var mı?"];
+    Kredi [shape=diamond, label="Kredi Limiti Aşılıyor mu?"];
+    ZatenSecildi [shape=diamond, label="Ders Zaten Seçildi mi?"];
+    Ekle [label="Ders Eklendi\nToplam Kredi Güncellendi"];
+    SonrakiDers [label="Sonraki Ders"];
+    SecimBitti [shape=diamond, label="Seçim Bitti mi? (dersKod=0)"];
+    BosMu [shape=diamond, label="Seçilen Ders Yok mu?"];
+    DersListele [label="Seçilen Dersleri Listele"];
+    Danisman [shape=diamond, label="Danışman Onayı Gönderilsin mi?"];
+    Onay [shape=diamond, label="Danışman Onayladı mı?"];
+    Basarili [label="Kayıt Tamamlandı ✅"];
+    Reddedildi [label="Danışman Onayı Reddedildi ❌"];
+    Iptal [label="Kayıt İptal Edildi"];
+    Bitir [label="BİTİR"];
+
+    // --- Akış bağlantıları ---
+    Start -> Giris -> Kimlik;
+    Kimlik -> DersListe [label="EVET"];
+    Kimlik -> Hata [label="HAYIR"];
+    Hata -> Bitir;
+
+    DersListe -> DersSecimi;
+    DersSecimi -> SecimBitti [label="dersKod=0"];
+    DersSecimi -> Gecersiz [label="Geçersiz Kod"];
+    Gecersiz -> DersSecimi;
+
+    DersSecimi -> Kontenjan [label="Geçerli Kod"];
+    Kontenjan -> DersSecimi [label="EVET (Dolu)"];
+    Kontenjan -> OnKosul [label="HAYIR"];
+
+    OnKosul -> Zaman [label="HAYIR (Yok)"];
+    OnKosul -> OnKosulSaglandi [label="EVET (Var)"];
+    OnKosulSaglandi -> DersSecimi [label="HAYIR"];
+    OnKosulSaglandi -> Zaman [label="EVET"];
+
+    Zaman -> DersSecimi [label="EVET (Çakışıyor)"];
+    Zaman -> Kredi [label="HAYIR"];
+
+    Kredi -> DersSecimi [label="EVET (Aşıyor)"];
+    Kredi -> ZatenSecildi [label="HAYIR"];
+
+    ZatenSecildi -> DersSecimi [label="EVET (Zaten Seçildi)"];
+    ZatenSecildi -> Ekle [label="HAYIR"];
+
+    Ekle -> SonrakiDers -> DersSecimi;
+
+    SecimBitti -> BosMu [label="EVET"];
+    SecimBitti -> DersSecimi [label="HAYIR"];
+
+    BosMu -> Bitir [label="EVET"];
+    BosMu -> DersListele [label="HAYIR"];
+
+    DersListele -> Danisman;
+    Danisman -> Onay [label="EVET"];
+    Danisman -> Iptal [label="HAYIR"];
+
+    Onay -> Basarili [label="EVET"];
+    Onay -> Reddedildi [label="HAYIR"];
+
+    Basarili -> Bitir;
+    Reddedildi -> Bitir;
+    Iptal -> Bitir;
+}
